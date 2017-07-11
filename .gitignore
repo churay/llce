@@ -1,32 +1,24 @@
-# Prerequisites
-*.d
+## Compiled Binary Files ##
+bin/*
 
-# Compiled Object files
-*.slo
-*.lo
+## Compiled Source Files ##
 *.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
 *.so
-*.dylib
-*.dll
+*.to
 
-# Fortran module files
-*.mod
-*.smod
+## External Library Files ##
+lib/*
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
+## Package Files ##
+*.tar
+*.zip
+*.rar
 
-# Executables
-*.exe
-*.out
-*.app
+## Logs Files ##
+*.log
+*.gdb
+
+## OS Files ##
+*.swp
+*.swo
+*.*.sw*
