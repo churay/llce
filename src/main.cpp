@@ -25,32 +25,34 @@ int main() {
         return 1;
     }
 
-    // SDL_Surface* screenSurface = SDL_GetWindowSurface( window );
+    SDL_Renderer* screenRenderer = SDL_CreateRenderer( window, -1, 0 );
 
     // Update and Render Application //
 
-    while( true ) {
+    bool isRunning = true;
+    bool isWhite = true;
+
+    while( isRunning ) {
         SDL_Event event;
         SDL_WaitEvent( &event );
         if( event.type == SDL_QUIT ) {
-            break;
+            isRunning = false;
         } else if( event.type == SDL_WINDOWEVENT ) {
             if( event.window.event == SDL_WINDOWEVENT_RESIZED ) {
                 size_t w = event.window.data1, h = event.window.data2;
                 std::cout << "Window Resized: (" << w << ", " << h << ")" << std::endl;
+            } else if( event.window.event == SDL_WINDOWEVENT_EXPOSED ) {
+                if( isWhite ) {
+                    SDL_SetRenderDrawColor( screenRenderer, 255, 255, 255, 255 );
+                } else {
+                    SDL_SetRenderDrawColor( screenRenderer, 0, 0, 0, 255 );
+                }
+                isWhite = !isWhite;
             }
+
+            SDL_RenderClear( screenRenderer );
+            SDL_RenderPresent( screenRenderer );
         }
-
-        /*
-        SDL_FillRect(
-            screenSurface,                                          // Fill Surface
-            NULL,                                                   // Fill Rectangle
-            SDL_MapRGB( screenSurface->format, 0xFF, 0xFF, 0xFF )   // Fill Color
-        );
-
-        SDL_UpdateWindowSurface( window );
-        SDL_Delay( 2000 );
-        */
     }
 
     // Clean Up SDL Assets and Exit //
