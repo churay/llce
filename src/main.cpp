@@ -11,13 +11,13 @@ int main() {
 
     // Create an SDL Window //
 
-    SDL_Window* window = SDL_CreateWindow( 
-        "SDL2 Example",                 // Window Title
+    SDL_Window* window = SDL_CreateWindow(
+        "Loop-Live Code Editing",       // Window Title
         SDL_WINDOWPOS_UNDEFINED,        // Window X Position
         SDL_WINDOWPOS_UNDEFINED,        // Window Y Position
         640,                            // Window Width
         480,                            // Window Height
-        SDL_WINDOW_SHOWN                // Window Initialization Flags
+        SDL_WINDOW_RESIZABLE            // Window Initialization Flags
     );
 
     if( window == NULL ) {
@@ -25,17 +25,33 @@ int main() {
         return 1;
     }
 
-    // Render to the SDL Window //
+    // SDL_Surface* screenSurface = SDL_GetWindowSurface( window );
 
-    SDL_Surface* screenSurface = SDL_GetWindowSurface( window );
-    SDL_FillRect(
-        screenSurface,                                          // Fill Surface
-        NULL,                                                   // Fill Rectangle
-        SDL_MapRGB( screenSurface->format, 0xFF, 0xFF, 0xFF )   // Fill Color
-    );
+    // Update and Render Application //
 
-    SDL_UpdateWindowSurface( window );
-    SDL_Delay( 2000 );
+    while( true ) {
+        SDL_Event event;
+        SDL_WaitEvent( &event );
+        if( event.type == SDL_QUIT ) {
+            break;
+        } else if( event.type == SDL_WINDOWEVENT ) {
+            if( event.window.event == SDL_WINDOWEVENT_RESIZED ) {
+                size_t w = event.window.data1, h = event.window.data2;
+                std::cout << "Window Resized: (" << w << ", " << h << ")" << std::endl;
+            }
+        }
+
+        /*
+        SDL_FillRect(
+            screenSurface,                                          // Fill Surface
+            NULL,                                                   // Fill Rectangle
+            SDL_MapRGB( screenSurface->format, 0xFF, 0xFF, 0xFF )   // Fill Color
+        );
+
+        SDL_UpdateWindowSurface( window );
+        SDL_Delay( 2000 );
+        */
+    }
 
     // Clean Up SDL Assets and Exit //
 
