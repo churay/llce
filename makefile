@@ -21,7 +21,7 @@ PROJ_MAIN = $(SRC_DIR)/main.cpp
 
 all : $(PROJ_EXE)
 
-$(PROJ_EXE) : $(PROJ_MAIN) $(wildcard $(SRC_DIR)/*) | $(BIN_DIR)
+$(PROJ_EXE) : $(PROJ_MAIN) $(wildcard $(SRC_DIR)/*.c*) | $(BIN_DIR)
 	$(CXX) $(CXX_FLAGS) $(CXX_LIB_FLAGS) $(CXX_INCLS) $^ -o $@ $(CXX_LIB_INCLS)
 
 $(BIN_DIR) $(OBJ_DIR) :

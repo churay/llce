@@ -1,6 +1,8 @@
 #include <iostream>
 #include <SDL2/SDL.h>
 
+#include "timer.h"
+
 int main() {
     // Initialize SDL //
 
@@ -26,26 +28,26 @@ int main() {
         return 1;
     }
 
-    SDL_Renderer* screenRenderer = SDL_CreateRenderer( window, -1, 0 );
-    SDL_Texture* screenTexture = SDL_CreateTexture(
-        screenRenderer,                 // Host Renderer
-        SDL_PIXELFORMAT_ARGB8888,       // Pixel Format (ARGB, 8 bits each)
+    SDL_Renderer* renderer = SDL_CreateRenderer( window, -1, 0 );
+    SDL_Texture* texture = SDL_CreateTexture(
+        renderer,                 // Host Renderer
+        SDL_PIXELFORMAT_RGBA8888,       // Pixel Format (RGBA, 8 bits each)
         SDL_TEXTUREACCESS_STREAMING,    // Texture Type (Streaming)
         cWindowWidth,                   // Texture Width
         cWindowHeight );                // Texture Height
 
     // Create and Load Texture //
 
-    uint32_t* screenTextureData = new uint32_t[cWindowWidth*cWindowHeight];
+    uint32_t* textureData = new uint32_t[cWindowWidth*cWindowHeight];
     for( int y = 0; y < cWindowHeight; y++ ) {
         for( int x = 0; x < cWindowWidth; x++ ) {
             int i = x + y * cWindowWidth;
-            screenTextureData[i] = 0xFFFF0000;
+            textureData[i] = 0xFF0000FF;
         }
     }
 
-    int textureLoadStatus = SDL_UpdateTexture( screenTexture, nullptr,
-        (void*)screenTextureData, sizeof(uint32_t)*cWindowWidth );
+    int textureLoadStatus = SDL_UpdateTexture( texture, nullptr,
+        (void*)textureData, sizeof(uint32_t)*cWindowWidth );
 
     if( textureLoadStatus != 0 ) {
         std::cout << "SDL failed to load texture; " << textureLoadStatus << std::endl;
@@ -54,29 +56,35 @@ int main() {
 
     // Update and Render Application //
 
+    timer t( 60 );
+
     bool isRunning = true;
-
     while( isRunning ) {
-        SDL_Event event;
-        SDL_WaitEvent( &event );
-        if( event.type == SDL_QUIT ) {
-            isRunning = false;
-        } else if( event.type == SDL_WINDOWEVENT  && (
-               event.window.event == SDL_WINDOWEVENT_RESIZED ||
-               event.window.event == SDL_WINDOWEVENT_EXPOSED) ) {
-            int newWidth, newHeight;
-            SDL_GetWindowSize( window, &newWidth, &newHeight );
+        t.split();
 
-            SDL_RenderClear( screenRenderer );
-            SDL_RenderCopy( screenRenderer, screenTexture, nullptr, nullptr );
-            SDL_RenderPresent( screenRenderer );
+        SDL_Event event;
+        while( SDL_PollEvent(&event) ) {
+            if( event.type == SDL_QUIT ) {
+                isRunning = false;
+            } else if( event.type == SDL_WINDOWEVENT  && (
+                   event.window.event == SDL_WINDOWEVENT_RESIZED ||
+                   event.window.event == SDL_WINDOWEVENT_EXPOSED) ) {
+                int newWidth, newHeight;
+                SDL_GetWindowSize( window, &newWidth, &newHeight );
+
+                SDL_RenderClear( renderer );
+                SDL_RenderCopy( renderer, texture, nullptr, nullptr );
+                SDL_RenderPresent( renderer );
+            }
         }
+
+        t.wait();
     }
 
     // Clean Up SDL Assets and Exit //
 
-    delete [] screenTextureData;
-    SDL_DestroyTexture( screenTexture );
+    delete [] textureData;
+    SDL_DestroyTexture( texture );
 
     SDL_DestroyWindow( window );
     SDL_Quit();
