@@ -1,8 +1,10 @@
-#ifndef TIMER_H
-#define TIMER_H
+#ifndef LLCE_TIMER_H
+#define LLCE_TIMER_H
 
 #include <chrono>
 #include <ratio>
+
+namespace llce {
 
 class timer {
     public:
@@ -33,5 +35,7 @@ class timer {
     ClockDuration mFrameDuration;
     ClockPoint mSplitTime, mWaitTime;
 };
+
+}
 
 #endif

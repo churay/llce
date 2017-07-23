@@ -3,6 +3,7 @@
 #include <SDL2/SDL.h>
 
 #include "timer.h"
+#include "texture.h"
 
 int main() {
     // Initialize SDL //
@@ -30,30 +31,15 @@ int main() {
     }
 
     SDL_Renderer* renderer = SDL_CreateRenderer( window, -1, 0 );
-    SDL_Texture* texture = SDL_CreateTexture(
-        renderer,                       // Host Renderer
-        SDL_PIXELFORMAT_RGBA8888,       // Pixel Format (RGBA, 8 bits each)
-        SDL_TEXTUREACCESS_STREAMING,    // Texture Type (Streaming)
-        cWindowWidth,                   // Texture Width
-        cWindowHeight );                // Texture Height
 
     // Create and Load Texture //
 
-    size_t cTextureDataBytes = sizeof(uint32_t) * cWindowWidth * cWindowHeight;
-
-    uint32_t* textureData = (uint32_t*)mmap(
-        nullptr,                        // Memory Start Address
-        cTextureDataBytes,              // Allocation Length (Bytes)
-        PROT_READ | PROT_WRITE,         // Protection Flags (Read/Write)
-        MAP_ANONYMOUS | MAP_PRIVATE,    // Map Options (In-Memory, Private to Process)
-        -1,                             // File Descriptor
-        0 );                            // File Offset
-
-    auto loadTexture = [ &texture, &textureData, &cWindowWidth, &cWindowHeight ]
-            ( const size_t xOff, const size_t yOff ) {
-        for( int y = 0; y < cWindowHeight; y++ ) {
-            for( int x = 0; x < cWindowWidth; x++ ) {
-                int i = x + y * cWindowWidth;
+    llce::texture* texture = new llce::texture( renderer, cWindowWidth, cWindowHeight );
+    auto loadTexture = [ &texture ] ( const size_t xOff, const size_t yOff ) {
+        uint32_t* textureData = texture->mData;
+        for( int y = 0; y < texture->mHeight; y++ ) {
+            for( int x = 0; x < texture->mWidth; x++ ) {
+                int i = x + y * texture->mWidth;
                 textureData[i] = 0;
                 textureData[i] |= (uint8_t)( 0x00 ) << 24;    // red
                 textureData[i] |= (uint8_t)( y+yOff ) << 16;  // green
@@ -62,13 +48,12 @@ int main() {
             }
         }
 
-        return SDL_UpdateTexture( texture, nullptr,
-            (void*)textureData, sizeof(uint32_t)*cWindowWidth );
+        return texture->update();
     };
 
     // Update and Render Application //
 
-    timer t( 60 );
+    llce::timer t( 60 );
 
     size_t xOffset = 0, yOffset = 0;
 
@@ -92,7 +77,7 @@ int main() {
                 }
 
                 SDL_RenderClear( renderer );
-                SDL_RenderCopy( renderer, texture, nullptr, nullptr );
+                SDL_RenderCopy( renderer, texture->mHandle, nullptr, nullptr );
                 SDL_RenderPresent( renderer );
             }
         }
@@ -104,9 +89,6 @@ int main() {
     }
 
     // Clean Up SDL Assets and Exit //
-
-    munmap( (void*)textureData, cTextureDataBytes );
-    SDL_DestroyTexture( texture );
 
     SDL_DestroyWindow( window );
     SDL_Quit();

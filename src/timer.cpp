@@ -4,6 +4,8 @@
 
 #include "timer.h"
 
+namespace llce {
+
 timer::timer( size_t pFPS ) {
     SecDuration frameDuration( 1.0 / pFPS );
 
@@ -40,4 +42,6 @@ double timer::dt( size_t pNumFrames ) const {
     // time delta for the past "pNumFrames" frames.
     SecDuration prevFrameTime = std::chrono::duration_cast<SecDuration>( mWaitTime - mSplitTime );
     return static_cast<double>( prevFrameTime.count() );
+}
+
 }
