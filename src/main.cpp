@@ -69,27 +69,39 @@ int main() {
                    event.window.event == SDL_WINDOWEVENT_RESIZED ||
                    event.window.event == SDL_WINDOWEVENT_EXPOSED) ) {
                 doRender = true;
-            // NOTE(JRC): The movement numbers seem inverted because the values
-            // being changed are the offsets for the underlying texture.  By
-            // doing a positive offset in Y for example, we offset the texture
-            // downward on the screen, giving the appearance of the window
-            // "camera" going upwards.
+            }
+            // NOTE(JRC): Implement the following code in order to detect
+            // when a key is pressed but not held.
+            /*
             } else if( event.type == SDL_KEYDOWN ) {
                 SDL_Keycode pressedKey = event.key.keysym.sym;
                 if( pressedKey == SDLK_q ) {
                     isRunning = false;
-                } else if( pressedKey == SDLK_w ) {
-                    yOffset += 1;
-                } else if( pressedKey == SDLK_s ) {
-                    yOffset -= 1;
-                } else if( pressedKey == SDLK_a ) {
-                    xOffset += 1;
-                } else if( pressedKey == SDLK_d ) {
-                    xOffset -= 1;
                 }
-
-                doRender = true;
             }
+            */
+        }
+
+        // NOTE(JRC): The movement numbers seem inverted because the values
+        // being changed are the offsets for the underlying texture.  By
+        // doing a positive offset in Y for example, we offset the texture
+        // downward on the screen, giving the appearance of the window
+        // "camera" going upwards.
+        const uint8_t* keyboardState = SDL_GetKeyboardState( nullptr );
+        if( keyboardState[SDL_SCANCODE_Q] ) {
+            isRunning = false;
+        } if( keyboardState[SDL_SCANCODE_W] ) {
+            yOffset += 1;
+            doRender = true;
+        } if( keyboardState[SDL_SCANCODE_S] ) {
+            yOffset -= 1;
+            doRender = true;
+        } if( keyboardState[SDL_SCANCODE_A] ) {
+            xOffset += 1;
+            doRender = true;
+        } if( keyboardState[SDL_SCANCODE_D] ) {
+            xOffset -= 1;
+            doRender = true;
         }
 
         if( doRender ) {
