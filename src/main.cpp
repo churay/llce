@@ -8,7 +8,7 @@
 int main() {
     // Initialize SDL //
 
-    if( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
+    if( SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0 ) {
         std::cout << "SDL failed to initialized; " << SDL_GetError() << std::endl;
         return 1;
     }
@@ -53,11 +53,11 @@ int main() {
 
     // Update and Render Application //
 
-    llce::timer t( 60 );
-
     size_t xOffset = 0, yOffset = 0;
 
-    bool isRunning = true;
+    llce::timer t( 60 );
+
+    bool isRunning = true, doRender = false;
     while( isRunning ) {
         t.split();
 
@@ -68,22 +68,40 @@ int main() {
             } else if( event.type == SDL_WINDOWEVENT  && (
                    event.window.event == SDL_WINDOWEVENT_RESIZED ||
                    event.window.event == SDL_WINDOWEVENT_EXPOSED) ) {
-                int newWidth, newHeight;
-                SDL_GetWindowSize( window, &newWidth, &newHeight );
-
-                if( loadTexture(xOffset, yOffset) != 0 ) {
-                    std::cout << "SDL failed to load texture." << std::endl;
+                doRender = true;
+            // NOTE(JRC): The movement numbers seem inverted because the values
+            // being changed are the offsets for the underlying texture.  By
+            // doing a positive offset in Y for example, we offset the texture
+            // downward on the screen, giving the appearance of the window
+            // "camera" going upwards.
+            } else if( event.type == SDL_KEYDOWN ) {
+                SDL_Keycode pressedKey = event.key.keysym.sym;
+                if( pressedKey == SDLK_q ) {
                     isRunning = false;
+                } else if( pressedKey == SDLK_w ) {
+                    yOffset += 1;
+                } else if( pressedKey == SDLK_s ) {
+                    yOffset -= 1;
+                } else if( pressedKey == SDLK_a ) {
+                    xOffset += 1;
+                } else if( pressedKey == SDLK_d ) {
+                    xOffset -= 1;
                 }
 
-                SDL_RenderClear( renderer );
-                SDL_RenderCopy( renderer, texture->mHandle, nullptr, nullptr );
-                SDL_RenderPresent( renderer );
+                doRender = true;
             }
         }
 
-        xOffset += 1;
-        yOffset += 1;
+        if( doRender ) {
+            if( loadTexture(xOffset, yOffset) != 0 ) {
+                std::cout << "SDL failed to load texture." << std::endl;
+                isRunning = false;
+            }
+
+            SDL_RenderClear( renderer );
+            SDL_RenderCopy( renderer, texture->mHandle, nullptr, nullptr );
+            SDL_RenderPresent( renderer );
+        }
 
         t.wait();
     }
