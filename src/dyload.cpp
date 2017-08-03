@@ -1,17 +1,15 @@
 #include <stdio.h>
-#include <stdint.h>
 #include <sys/mman.h>
 #include <signal.h>
 
 #include "timer.h"
 #include "texture.h"
-
-typedef uint32_t bool32_t;
+#include "consts.h"
 
 // TODO(JRC): This is really ugly and should be fixed is possible.
 bool32_t isRunning = true;
 
-int main() {
+int32_t main() {
     static auto processSignal = [] ( int32_t pSignal ) { isRunning = false; };
     signal( SIGINT, processSignal );
 
