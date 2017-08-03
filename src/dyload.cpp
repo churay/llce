@@ -2,8 +2,8 @@
 #include <sys/mman.h>
 #include <signal.h>
 
+#include "dylib.h"
 #include "timer.h"
-#include "texture.h"
 #include "consts.h"
 
 // TODO(JRC): This is really ugly and should be fixed is possible.
@@ -15,6 +15,34 @@ int32_t main() {
 
     printf( "Start!\n" );
 
+    llce::memory mem = {};
+    mem.permanentSize = megabyte_bl( 64 );
+    mem.transientSize = gigabyte_bl( 1 );
+
+    mem.permanent = mmap(
+        nullptr,                         // Memory Start Address
+        mem.permanentSize,               // Allocation Length (Bytes)
+        PROT_READ | PROT_WRITE,          // Protection Flags (Read/Write)
+        MAP_ANONYMOUS | MAP_PRIVATE,     // Map Options (In-Memory, Private to Process)
+        -1,                              // File Descriptor
+        0 );                             // File Offset
+    mem.transient = mmap(
+        nullptr,                         // Memory Start Address
+        mem.transientSize,               // Allocation Length (Bytes)
+        PROT_READ | PROT_WRITE,          // Protection Flags (Read/Write)
+        MAP_ANONYMOUS | MAP_PRIVATE,     // Map Options (In-Memory, Private to Process)
+        -1,                              // File Descriptor
+        0 );                             // File Offset
+
+    if( mem.permanent == (void*)-1 || mem.transient == (void*)-1 ) {
+        printf( "\nError!\n" );
+        printf( "Permanent Status: %p", mem.permanent );
+        printf( "Transient Status: %p", mem.transient );
+        return -1;
+    }
+
+    llce::state state = {};
+
     llce::timer t( 60 );
     while( isRunning ) {
         t.split();
@@ -25,6 +53,9 @@ int32_t main() {
 
         t.wait();
     }
+
+    munmap( mem.permanent, mem.permanentSize );
+    munmap( mem.transient, mem.transientSize );
 
     printf( "\nEnd!\n" );
 
