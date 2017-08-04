@@ -1,9 +1,5 @@
 #include "dylib.h"
 
-namespace llce {
-
-void update( state* pState ) {
+extern "C" void update( llce::state* pState ) {
     pState->value = 1;
-}
-
 }

@@ -2,7 +2,7 @@
 
 CXX = clang++
 CXX_FLAGS = -std=c++1y -Wall -g -O0
-CXX_INCLS = -I$(SRC_DIR)
+CXX_INCLS = -I$(SRC_DIR) -Wl,-rpath=$(BIN_DIR)
 
 CXX_LIB_FLAGS = `pkg-config --cflags sdl2`
 CXX_LIB_INCLS = `pkg-config --static --libs sdl2`
@@ -29,11 +29,14 @@ $(PROJ_EXE) : $(PROJ_MAIN) $(SRC_DIR)/texture.cpp $(SRC_DIR)/timer.cpp | $(BIN_D
 	$(CXX) $(CXX_FLAGS) $(CXX_LIB_FLAGS) $(CXX_INCLS) $^ -o $@ $(CXX_LIB_INCLS)
 
 dyload : $(EX_EXE)
-$(EX_EXE) : $(EX_MAIN) $(SRC_DIR)/timer.cpp $(BIN_DIR)/dylib.so | $(BIN_DIR)
-	$(CXX) $(CXX_FLAGS) $(CXX_INCLS) $^ -o $@
+$(EX_EXE) : $(EX_MAIN) $(BIN_DIR)/timer.o $(BIN_DIR)/dylib.so | $(BIN_DIR)
+	$(CXX) $(CXX_FLAGS) -ldl $(CXX_INCLS) $(filter-out %.so,$^) -o $@
 
 $(BIN_DIR)/%.so : $(SRC_DIR)/%.cpp $(SRC_DIR)/%.h
 	$(CXX) $(CXX_FLAGS) -fPIC -shared $< -o $@
+
+$(BIN_DIR)/%.o : $(SRC_DIR)/%.cpp $(SRC_DIR)/%.h
+	$(CXX) $(CXX_FLAGS) -c $< -o $@
 
 $(BIN_DIR) $(OBJ_DIR) :
 	mkdir -p $@

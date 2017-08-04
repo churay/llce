@@ -19,8 +19,6 @@ struct state {
     int32_t value = 0;
 };
 
-void update( state* pState );
-
 }
 
 #endif
