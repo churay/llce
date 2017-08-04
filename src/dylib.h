@@ -6,18 +6,20 @@
 namespace llce {
 
 struct memory {
-    bool32_t isInitialized;
+    bool32_t initialized = false;
 
-    uint64_t permanentSize;
-    void* permanent;
+    uint64_t permanentSize = 0;
+    void* permanent = nullptr;
 
-    uint64_t transientSize;
-    void* transient;
+    uint64_t transientSize = 0;
+    void* transient = nullptr;
 };
 
 struct state {
-    int32_t value;
+    int32_t value = 0;
 };
+
+void update( state* pState );
 
 }
 
