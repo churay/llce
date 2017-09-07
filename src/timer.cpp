@@ -2,6 +2,8 @@
 #include <ratio>
 #include <thread>
 
+#include <iostream>
+
 #include "timer.h"
 
 namespace llce {
@@ -10,8 +12,15 @@ timer::timer( uint32_t pFPS ) {
     SecDuration frameDuration( 1.0 / pFPS );
 
     mFrameDuration = std::chrono::duration_cast<ClockDuration>( frameDuration );
-    mSplitTime = Clock::now();
-    mWaitTime = Clock::now();
+    mStartTime = mSplitTime = mWaitTime = Clock::now();
+}
+
+
+timer::timer( float64_t pSPF ) {
+    SecDuration frameDuration( pSPF );
+
+    mFrameDuration = std::chrono::duration_cast<ClockDuration>( frameDuration );
+    mStartTime = mSplitTime = mWaitTime = Clock::now();
 }
 
 
@@ -42,6 +51,21 @@ float64_t timer::dt( uint32_t pNumFrames ) const {
     // time delta for the past "pNumFrames" frames.
     SecDuration prevFrameTime = std::chrono::duration_cast<SecDuration>( mWaitTime - mSplitTime );
     return static_cast<float64_t>( prevFrameTime.count() );
+}
+
+
+uint32_t timer::ft() const {
+    SecDuration totalTime = std::chrono::duration_cast<SecDuration>( Clock::now() - mStartTime );
+    SecDuration frameTime = std::chrono::duration_cast<SecDuration>( mFrameDuration );
+    return static_cast<uint32_t>(
+        static_cast<float64_t>(totalTime.count()) / static_cast<float64_t>(frameTime.count())
+    );
+}
+
+
+float64_t timer::tt() const {
+    SecDuration totalTime = std::chrono::duration_cast<SecDuration>( Clock::now() - mStartTime );
+    return static_cast<float64_t>( totalTime.count() );
 }
 
 }

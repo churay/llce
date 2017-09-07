@@ -12,7 +12,8 @@ class timer {
 
     /// Constructors ///
 
-    timer( uint32_t pFPS = 60 );
+    explicit timer( uint32_t pFPS = 60 );
+    explicit timer( float64_t pSPF = 1.0f );
 
     /// Class Functions ///
 
@@ -21,6 +22,9 @@ class timer {
 
     float64_t fps( uint32_t pNumFrames = 1 ) const;
     float64_t dt( uint32_t pNumFrames = 1 ) const;
+
+    uint32_t ft() const;
+    float64_t tt() const;
 
     private:
 
@@ -34,7 +38,7 @@ class timer {
     /// Class Fields ///
 
     ClockDuration mFrameDuration;
-    ClockPoint mSplitTime, mWaitTime;
+    ClockPoint mStartTime, mSplitTime, mWaitTime;
 };
 
 }

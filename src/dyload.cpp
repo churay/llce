@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <dlfcn.h>
 #include <signal.h>
@@ -46,7 +47,7 @@ int32_t main() {
         return 1;
     }
 
-    mem.initialized = true;
+    mem.isInitialized = true;
 
     // TODO(JRC): Change this so that it's pointing at the memory allocated
     // for the application (in 'mem' variable).
@@ -54,8 +55,7 @@ int32_t main() {
 
     /// Load Dynamic Shared Library ///
 
-    static auto loadLibrarySymbol = [] (
-            const char* pLibraryName, const char* pSymbolName ) {
+    static auto loadLibrary = [] ( const char* pLibraryName ) {
         void* libraryHandle = dlopen( pLibraryName, RTLD_LAZY );
         const char* libraryError = dlerror();
         if( libraryHandle == nullptr ) {
@@ -63,7 +63,12 @@ int32_t main() {
             return static_cast<void*>( nullptr );
         }
 
-        void* symbolFunction = dlsym( libraryHandle, pSymbolName );
+        return libraryHandle;
+    };
+
+    static auto loadLibrarySymbol = [] (
+            const void* pLibraryHandle, const char* pSymbolName ) {
+        void* symbolFunction = dlsym( const_cast<void*>(pLibraryHandle), pSymbolName );
         const char* symbolError = dlerror();
         if( symbolFunction == nullptr ) {
             printf( "Failed to Load Symbol %s: %s\n", pSymbolName, symbolError );
@@ -73,8 +78,9 @@ int32_t main() {
         return symbolFunction;
     };
 
-    void* updateSymbol = loadLibrarySymbol( "dylib.so", "update" );
-    if( updateSymbol == nullptr ) {
+    void* dylibHandle = loadLibrary( "dylib.so" );
+    void* updateSymbol = loadLibrarySymbol( dylibHandle, "update" );
+    if( dylibHandle == nullptr || updateSymbol == nullptr ) {
         printf( "\nError: Couldn't load library at initialize!\n" );
         return 2;
     }
@@ -84,17 +90,29 @@ int32_t main() {
 
     printf( "Start!\n" );
 
-    llce::timer t( 60 );
+    llce::timer simTimer( 1.0/60.0 ), dyloadTimer( 1.0 );
+    uint32_t prevDyloadFrame = 0, currDyloadFrame = 0;
     while( isRunning ) {
-        t.split();
+        simTimer.split();
+
+        prevDyloadFrame = currDyloadFrame;
+        currDyloadFrame = dyloadTimer.ft();
+        if( prevDyloadFrame != currDyloadFrame ) {
+            dlclose( dylibHandle );
+            dylibHandle = loadLibrary( "dylib.so" );
+            updateFunction = (update_f)loadLibrarySymbol( dylibHandle, "update" );
+        }
 
         updateFunction( &state );
 
+        // TODO(JRC): As a first step, the DLL should be loaded once every couple
+        // of seconds and taken from a copy of the existing DLL so that file handle
+        // contention isn't a problem.
         // TODO(JRC): The criteria for switching should be if a file change
         // is detected on the file handle for the DLL (use 'stat' or equivalent).
-        printf( "Current Value: %d\r", state.value );
+        printf( "Current Value: %d (Elapsed Time: %f)  \r", state.value, simTimer.tt() );
 
-        t.wait();
+        simTimer.wait();
     }
 
     munmap( mem.permanent, mem.permanentSize );

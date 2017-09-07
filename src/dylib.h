@@ -6,7 +6,7 @@
 namespace llce {
 
 struct memory {
-    bool32_t initialized = false;
+    bool32_t isInitialized = false;
 
     uint64_t permanentSize = 0;
     void* permanent = nullptr;
