@@ -56,7 +56,7 @@ int32_t main() {
     /// Load Dynamic Shared Library ///
 
     static auto loadLibrary = [] ( const char* pLibraryName ) {
-        void* libraryHandle = dlopen( pLibraryName, RTLD_LAZY );
+        void* libraryHandle = dlopen( pLibraryName, RTLD_NOW );
         const char* libraryError = dlerror();
         if( libraryHandle == nullptr ) {
             printf( "Failed to Load Library %s: %s\n", pLibraryName, libraryError );
@@ -90,7 +90,9 @@ int32_t main() {
 
     printf( "Start!\n" );
 
-    llce::timer simTimer( 1.0/60.0 ), dyloadTimer( 1.0 );
+    llce::timer simTimer( 60.0, llce::timer::type::fps );
+    llce::timer dyloadTimer( 1.0, llce::timer::type::spf );
+
     uint32_t prevDyloadFrame = 0, currDyloadFrame = 0;
     while( isRunning ) {
         simTimer.split();

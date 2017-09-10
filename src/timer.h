@@ -10,10 +10,13 @@ namespace llce {
 class timer {
     public:
 
+    /// Class Attributes ///
+
+    enum class type { fps, spf };
+
     /// Constructors ///
 
-    explicit timer( uint32_t pFPS = 60 );
-    explicit timer( float64_t pSPF = 1.0f );
+    timer( float64_t pRatio = 60.0, type pType = type::fps );
 
     /// Class Functions ///
 

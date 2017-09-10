@@ -55,7 +55,7 @@ int main() {
 
     size_t xOffset = 0, yOffset = 0;
 
-    llce::timer t( 60 );
+    llce::timer t( 60, llce::timer::type::fps );
 
     bool isRunning = true, doRender = false;
     while( isRunning ) {

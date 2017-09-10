@@ -8,16 +8,8 @@
 
 namespace llce {
 
-timer::timer( uint32_t pFPS ) {
-    SecDuration frameDuration( 1.0 / pFPS );
-
-    mFrameDuration = std::chrono::duration_cast<ClockDuration>( frameDuration );
-    mStartTime = mSplitTime = mWaitTime = Clock::now();
-}
-
-
-timer::timer( float64_t pSPF ) {
-    SecDuration frameDuration( pSPF );
+timer::timer( float64_t pRatio, timer::type pType ) {
+    SecDuration frameDuration( (pType == timer::type::spf) ? pRatio : 1.0 / pRatio );
 
     mFrameDuration = std::chrono::duration_cast<ClockDuration>( frameDuration );
     mStartTime = mSplitTime = mWaitTime = Clock::now();
