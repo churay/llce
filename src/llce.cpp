@@ -115,7 +115,7 @@ int main() {
             SDL_RenderPresent( renderer );
         }
 
-        t.wait();
+        t.split( true );
     }
 
     // Clean Up SDL Assets and Exit //

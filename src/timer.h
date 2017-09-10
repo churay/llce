@@ -1,6 +1,7 @@
 #ifndef LLCE_TIMER_H
 #define LLCE_TIMER_H
 
+#include <array>
 #include <chrono>
 #include <ratio>
 #include "consts.h"
@@ -14,20 +15,21 @@ class timer {
 
     enum class type { fps, spf };
 
+    const static uint32_t CACHE_SIZE = 10;
+
     /// Constructors ///
 
     timer( float64_t pRatio = 60.0, type pType = type::fps );
 
     /// Class Functions ///
 
-    void split();
-    void wait();
+    void split( bool32_t pWaitFrame = false );
 
-    float64_t fps( uint32_t pNumFrames = 1 ) const;
-    float64_t dt( uint32_t pNumFrames = 1 ) const;
-
-    uint32_t ft() const;
+    float64_t ft() const;
     float64_t tt() const;
+    float64_t fps() const;
+
+    bool32_t cycled() const;
 
     private:
 
@@ -41,7 +43,10 @@ class timer {
     /// Class Fields ///
 
     ClockDuration mFrameDuration;
-    ClockPoint mStartTime, mSplitTime, mWaitTime;
+    ClockPoint mTimerStart;
+
+    std::array<ClockPoint, CACHE_SIZE> mFrameSplits;
+    uint32_t mCurrFrameIdx, mPrevFrameIdx;
 };
 
 }

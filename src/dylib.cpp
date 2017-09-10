@@ -1,5 +1,5 @@
 #include "dylib.h"
 
 extern "C" void update( llce::state* pState ) {
-    pState->value = 2;
+    pState->value = 1;
 }

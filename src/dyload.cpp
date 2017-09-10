@@ -93,13 +93,13 @@ int32_t main() {
     llce::timer simTimer( 60.0, llce::timer::type::fps );
     llce::timer dyloadTimer( 1.0, llce::timer::type::spf );
 
-    uint32_t prevDyloadFrame = 0, currDyloadFrame = 0;
     while( isRunning ) {
         simTimer.split();
 
-        prevDyloadFrame = currDyloadFrame;
-        currDyloadFrame = dyloadTimer.ft();
-        if( prevDyloadFrame != currDyloadFrame ) {
+        // TODO(JRC): The criteria for switching should be if a file change
+        // is detected on the file handle for the DLL (use 'stat' or equivalent).
+        dyloadTimer.split();
+        if( dyloadTimer.cycled() ) {
             dlclose( dylibHandle );
             dylibHandle = loadLibrary( "dylib.so" );
             updateFunction = (update_f)loadLibrarySymbol( dylibHandle, "update" );
@@ -107,14 +107,9 @@ int32_t main() {
 
         updateFunction( &state );
 
-        // TODO(JRC): As a first step, the DLL should be loaded once every couple
-        // of seconds and taken from a copy of the existing DLL so that file handle
-        // contention isn't a problem.
-        // TODO(JRC): The criteria for switching should be if a file change
-        // is detected on the file handle for the DLL (use 'stat' or equivalent).
         printf( "Current Value: %d (Elapsed Time: %f)  \r", state.value, simTimer.tt() );
 
-        simTimer.wait();
+        simTimer.split( true );
     }
 
     munmap( mem.permanent, mem.permanentSize );

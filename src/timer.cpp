@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <ratio>
 #include <thread>
@@ -10,54 +11,57 @@ namespace llce {
 
 timer::timer( float64_t pRatio, timer::type pType ) {
     SecDuration frameDuration( (pType == timer::type::spf) ? pRatio : 1.0 / pRatio );
-
     mFrameDuration = std::chrono::duration_cast<ClockDuration>( frameDuration );
-    mStartTime = mSplitTime = mWaitTime = Clock::now();
+
+    ClockPoint initTime = Clock::now();
+    mTimerStart = initTime;
+    mFrameSplits.fill( initTime );
+    mCurrFrameIdx = mPrevFrameIdx = 0;
 }
 
 
-void timer::split() {
-    mSplitTime = Clock::now();
+void timer::split( bool32_t pFrameWait ) {
+    mPrevFrameIdx = mCurrFrameIdx;
+    mCurrFrameIdx = ( mCurrFrameIdx + 1 ) % mFrameSplits.size();
+    mFrameSplits[mCurrFrameIdx] = Clock::now();
+
+    if( pFrameWait ) {
+        ClockDuration frameTime =
+            mFrameSplits[mCurrFrameIdx] - mFrameSplits[mPrevFrameIdx];
+        ClockDuration remainingTime = mFrameDuration - frameTime;
+        std::this_thread::sleep_for( remainingTime );
+    }
 }
 
 
-void timer::wait() {
-    mWaitTime = Clock::now();
-
-    ClockDuration elapsedTime = mWaitTime - mSplitTime;
-    ClockDuration remainingTime = mFrameDuration - elapsedTime;
-    std::this_thread::sleep_for( remainingTime );
-}
-
-
-float64_t timer::fps( uint32_t pNumFrames ) const {
-    // TODO(JRC): Implement this function so that it properly outputs the average
-    // FPS for the past "pNumFrames" frames.
-    SecDuration prevFrameTime = std::chrono::duration_cast<SecDuration>( mWaitTime - mSplitTime );
-    return static_cast<float64_t>( 1.0 / prevFrameTime.count() );
-}
-
-
-float64_t timer::dt( uint32_t pNumFrames ) const {
-    // TODO(JRC): Implement this function so that it properly outputs the average
-    // time delta for the past "pNumFrames" frames.
-    SecDuration prevFrameTime = std::chrono::duration_cast<SecDuration>( mWaitTime - mSplitTime );
-    return static_cast<float64_t>( prevFrameTime.count() );
-}
-
-
-uint32_t timer::ft() const {
-    SecDuration totalTime = std::chrono::duration_cast<SecDuration>( Clock::now() - mStartTime );
-    SecDuration frameTime = std::chrono::duration_cast<SecDuration>( mFrameDuration );
-    return static_cast<uint32_t>(
-        static_cast<float64_t>(totalTime.count()) / static_cast<float64_t>(frameTime.count())
-    );
+float64_t timer::ft() const {
+    ClockDuration prevFrameTime = std::max(
+        mFrameDuration, mFrameSplits[mCurrFrameIdx] - mFrameSplits[mPrevFrameIdx] );
+    SecDuration prevFrameSecs = std::chrono::duration_cast<SecDuration>( prevFrameTime );
+    return static_cast<float64_t>( prevFrameSecs.count() );
 }
 
 
 float64_t timer::tt() const {
-    SecDuration totalTime = std::chrono::duration_cast<SecDuration>( Clock::now() - mStartTime );
+    SecDuration totalTime = std::chrono::duration_cast<SecDuration>( Clock::now() - mTimerStart );
     return static_cast<float64_t>( totalTime.count() );
+}
+
+
+float64_t timer::fps() const {
+    return 1.0 / ft();
+}
+
+
+bool32_t timer::cycled() const {
+    ClockDuration prevSplitEpoch = mFrameSplits[mPrevFrameIdx] - mTimerStart;
+    ClockDuration currSplitEpoch = mFrameSplits[mCurrFrameIdx] - mTimerStart;
+
+    // TODO(JRC): Avoid auto here if possible to avoid type confusion.
+    auto prevSplitFrame = prevSplitEpoch / mFrameDuration;
+    auto currSplitFrame = currSplitEpoch / mFrameDuration;
+
+    return prevSplitFrame != currSplitFrame;
 }
 
 }
