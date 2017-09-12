@@ -1,5 +1,9 @@
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/file.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/mman.h>
 #include <dlfcn.h>
 #include <signal.h>
@@ -81,33 +85,50 @@ int32_t main() {
     void* dylibHandle = loadLibrary( "dylib.so" );
     void* updateSymbol = loadLibrarySymbol( dylibHandle, "update" );
     if( dylibHandle == nullptr || updateSymbol == nullptr ) {
-        printf( "\nError: Couldn't load library at initialize!\n" );
+        printf( "Error: Couldn't load library at initialize!\n" );
         return 2;
     }
     update_f updateFunction = (update_f)updateSymbol;
+
+    // TODO(JRC): Fix the calls to the 'stat' function so that they use the path
+    // relative to the executable instead of the path relative to the run directory.
+    struct stat prevDylibStatus, currDylibStatus;
+    if( stat("bin/dylib.so", &prevDylibStatus) ) {
+        printf( "Error: Couldn't load library timestamp data at initialize!\n" );
+        return 3;
+    }
+    currDylibStatus = prevDylibStatus;
 
     /// Update Application ///
 
     printf( "Start!\n" );
 
     llce::timer simTimer( 60.0, llce::timer::type::fps );
-    llce::timer dyloadTimer( 1.0, llce::timer::type::spf );
-
     while( isRunning ) {
         simTimer.split();
 
-        // TODO(JRC): The criteria for switching should be if a file change
-        // is detected on the file handle for the DLL (use 'stat' or equivalent).
-        dyloadTimer.split();
-        if( dyloadTimer.cycled() ) {
+        if( stat("bin/dylib.so", &currDylibStatus) ) {
+            printf( "Error: Couldn't load library timestamp data at step!\n" );
+            return 4;
+        } else if( currDylibStatus.st_ctime != prevDylibStatus.st_ctime ) {
+            // NOTE(JRC): 
+            int32_t dylibFile = open( "bin/dylib.so", O_RDWR );
+            flock( dylibFile, LOCK_EX );
+            flock( dylibFile, LOCK_UN );
+            close( dylibFile );
+
+            printf("Loaded!\n");
+
             dlclose( dylibHandle );
             dylibHandle = loadLibrary( "dylib.so" );
             updateFunction = (update_f)loadLibrarySymbol( dylibHandle, "update" );
+
+            prevDylibStatus = currDylibStatus;
         }
 
         updateFunction( &state );
 
-        printf( "Current Value: %d (Elapsed Time: %f)  \r", state.value, simTimer.tt() );
+        //printf( "Current Value: %d (Elapsed Time: %f)  \r", state.value, simTimer.tt() );
 
         simTimer.split( true );
     }

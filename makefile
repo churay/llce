@@ -7,6 +7,10 @@ CXX_INCLS = -I$(SRC_DIR) -Wl,-rpath=$(BIN_DIR)
 CXX_LIB_FLAGS = `pkg-config --cflags sdl2`
 CXX_LIB_INCLS = `pkg-config --static --libs sdl2`
 
+# NOTE(JRC): Per-file locks aren't necessary when writing to files on Unix,
+# so a special command is needed to inform other processes that a file is in use.
+FLOCK = flock -x -w 1
+
 ### Project Files/Directories ###
 
 PROJ_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
@@ -26,17 +30,17 @@ all : $(PROJ_EXE)
 
 llce : $(PROJ_EXE)
 $(PROJ_EXE) : $(PROJ_MAIN) $(SRC_DIR)/texture.cpp $(SRC_DIR)/timer.cpp | $(BIN_DIR)
-	$(CXX) $(CXX_FLAGS) $(CXX_LIB_FLAGS) $(CXX_INCLS) $^ -o $@ $(CXX_LIB_INCLS)
+	$(FLOCK) $@ -c '$(CXX) $(CXX_FLAGS) $(CXX_LIB_FLAGS) $(CXX_INCLS) $^ -o $@ $(CXX_LIB_INCLS)'
 
 dyload : $(EX_EXE)
 $(EX_EXE) : $(EX_MAIN) $(BIN_DIR)/timer.o $(BIN_DIR)/dylib.so | $(BIN_DIR)
-	$(CXX) $(CXX_FLAGS) -ldl $(CXX_INCLS) $(filter-out %.so,$^) -o $@
+	$(FLOCK) $@ -c '$(CXX) $(CXX_FLAGS) -ldl $(CXX_INCLS) $(filter-out %.so,$^) -o $@'
 
 $(BIN_DIR)/%.so : $(SRC_DIR)/%.cpp $(SRC_DIR)/%.h
-	$(CXX) $(CXX_FLAGS) -fPIC -shared $< -o $@
+	$(FLOCK) $@ -c '$(CXX) $(CXX_FLAGS) -fPIC -shared $< -o $@'
 
 $(BIN_DIR)/%.o : $(SRC_DIR)/%.cpp $(SRC_DIR)/%.h
-	$(CXX) $(CXX_FLAGS) -c $< -o $@
+	$(FLOCK) $@ -c '$(CXX) $(CXX_FLAGS) -c $< -o $@'
 
 $(BIN_DIR) $(OBJ_DIR) :
 	mkdir -p $@
