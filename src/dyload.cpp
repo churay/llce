@@ -112,12 +112,10 @@ int32_t main() {
             return 4;
         } else if( currDylibStatus.st_ctime != prevDylibStatus.st_ctime ) {
             // NOTE(JRC): 
-            int32_t dylibFile = open( "bin/dylib.so", O_RDWR );
+            int32_t dylibFile = open( "bin/dylib.so.lock", O_RDWR );
             flock( dylibFile, LOCK_EX );
             flock( dylibFile, LOCK_UN );
             close( dylibFile );
-
-            printf("Loaded!\n");
 
             dlclose( dylibHandle );
             dylibHandle = loadLibrary( "dylib.so" );
@@ -128,7 +126,7 @@ int32_t main() {
 
         updateFunction( &state );
 
-        //printf( "Current Value: %d (Elapsed Time: %f)  \r", state.value, simTimer.tt() );
+        printf( "Current Value: %d (Elapsed Time: %f)  \r", state.value, simTimer.tt() );
 
         simTimer.split( true );
     }

@@ -17,6 +17,7 @@ lib/*
 ## Logs Files ##
 *.log
 *.gdb
+*.lock
 
 ## OS Files ##
 *.swp
