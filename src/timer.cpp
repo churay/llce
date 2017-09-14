@@ -1,9 +1,6 @@
-#include <algorithm>
 #include <chrono>
 #include <ratio>
 #include <thread>
-
-#include <iostream>
 
 #include "timer.h"
 

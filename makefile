@@ -37,7 +37,7 @@ $(PROJ_EXE) : $(PROJ_MAIN) $(SRC_DIR)/texture.cpp $(SRC_DIR)/timer.cpp | $(BIN_D
 	$(call lock_command,$@,'$(CXX) $(CXX_FLAGS) $(CXX_LIB_FLAGS) $(CXX_INCLS) $^ -o $@ $(CXX_LIB_INCLS)')
 
 dyload : $(EX_EXE)
-$(EX_EXE) : $(EX_MAIN) $(BIN_DIR)/timer.o $(BIN_DIR)/dylib.so | $(BIN_DIR)
+$(EX_EXE) : $(EX_MAIN) $(BIN_DIR)/timer.o $(BIN_DIR)/util.o $(BIN_DIR)/dylib.so | $(BIN_DIR)
 	$(call lock_command,$@,'$(CXX) $(CXX_FLAGS) -ldl $(CXX_INCLS) $(filter-out %.so,$^) -o $@')
 
 $(BIN_DIR)/%.so : $(SRC_DIR)/%.cpp $(SRC_DIR)/%.h

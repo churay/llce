@@ -29,6 +29,9 @@ int32_t main() {
     mem.permanentSize = megabyte_bl( 64 );
     mem.transientSize = gigabyte_bl( 1 );
 
+    // TODO(JRC): The mapped pieces of memory should be mapped to a static base
+    // address so that pointers remain valid even if we load state from a file
+    // during loop-live code editing.
     mem.permanent = mmap(
         nullptr,                         // Memory Start Address
         mem.permanentSize,               // Allocation Length (Bytes)
