@@ -1,15 +1,12 @@
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/file.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <sys/mman.h>
 #include <dlfcn.h>
 #include <signal.h>
 
 #include "dylib.h"
 #include "timer.h"
+#include "platform.h"
 #include "consts.h"
 
 // TODO(JRC): This is really ugly and should be fixed is possible.
@@ -85,7 +82,14 @@ int32_t main() {
         return symbolFunction;
     };
 
-    void* dylibHandle = loadLibrary( "dylib.so" );
+    // TODO(JRC): Fix the calls to the 'stat' function so that they use the path
+    // relative to the executable instead of the path relative to the run directory.
+    // TODO(JRC): Create a function to calculate the full path of the dynamic
+    // library so that it can be used easily in all platform functions.
+    const char* dylibFilename = "dylib.so";
+    const char* dylibPath = "bin/dylib.so";
+
+    void* dylibHandle = loadLibrary( dylibFilename );
     void* updateSymbol = loadLibrarySymbol( dylibHandle, "update" );
     if( dylibHandle == nullptr || updateSymbol == nullptr ) {
         printf( "Error: Couldn't load library at initialize!\n" );
@@ -93,14 +97,11 @@ int32_t main() {
     }
     update_f updateFunction = (update_f)updateSymbol;
 
-    // TODO(JRC): Fix the calls to the 'stat' function so that they use the path
-    // relative to the executable instead of the path relative to the run directory.
-    struct stat prevDylibStatus, currDylibStatus;
-    if( stat("bin/dylib.so", &prevDylibStatus) ) {
+    int64_t prevDylibModTime, currDylibModTime;
+    if( !(prevDylibModTime = currDylibModTime = llce::platform::statModTime(dylibPath)) ) {
         printf( "Error: Couldn't load library timestamp data at initialize!\n" );
         return 3;
     }
-    currDylibStatus = prevDylibStatus;
 
     /// Update Application ///
 
@@ -110,21 +111,17 @@ int32_t main() {
     while( isRunning ) {
         simTimer.split();
 
-        if( stat("bin/dylib.so", &currDylibStatus) ) {
+        if( !(currDylibModTime = llce::platform::statModTime(dylibPath)) ) {
             printf( "Error: Couldn't load library timestamp data at step!\n" );
             return 4;
-        } else if( currDylibStatus.st_ctime != prevDylibStatus.st_ctime ) {
-            // NOTE(JRC): 
-            int32_t dylibFile = open( "bin/dylib.so.lock", O_RDWR );
-            flock( dylibFile, LOCK_EX );
-            flock( dylibFile, LOCK_UN );
-            close( dylibFile );
+        } else if( currDylibModTime != prevDylibModTime ) {
+            llce::platform::waitLockFile( dylibPath );
 
             dlclose( dylibHandle );
-            dylibHandle = loadLibrary( "dylib.so" );
+            dylibHandle = loadLibrary( dylibFilename );
             updateFunction = (update_f)loadLibrarySymbol( dylibHandle, "update" );
 
-            prevDylibStatus = currDylibStatus;
+            prevDylibModTime = currDylibModTime;
         }
 
         updateFunction( &state );
