@@ -23,8 +23,8 @@ int32_t main() {
     /// Initialize Application Memory/State ///
 
     llce::memory mem;
-    mem.permanentSize = megabyte_bl( 64 );
-    mem.transientSize = gigabyte_bl( 1 );
+    mem.permanentSize = MEGABYTE_BL( 64 );
+    mem.transientSize = GIGABYTE_BL( 1 );
 
     // TODO(JRC): The mapped pieces of memory should be mapped to a static base
     // address so that pointers remain valid even if we load state from a file
@@ -44,12 +44,10 @@ int32_t main() {
         -1,                              // File Descriptor
         0 );                             // File Offset
 
-    if( mem.permanent == (void*)-1 || mem.transient == (void*)-1 ) {
-        printf( "\nError: Couldn't allocate process memory!\n" );
-        printf( "Permanent Status: %p", mem.permanent );
-        printf( "Transient Status: %p", mem.transient );
-        return 1;
-    }
+    LLCE_ASSERT_ERROR( mem.permanent != (void*)-1 && mem.transient != (void*)-1,
+        "Couldn't allocate process memory; " <<
+        "permanent storage allocation failed with code " << (int64_t)mem.permanent << ", " <<
+        "transient storage allocation failed with code " << (int64_t)mem.transient << "." );
 
     mem.isInitialized = true;
 
@@ -62,10 +60,9 @@ int32_t main() {
     static auto loadLibrary = [] ( const char* pLibraryName ) {
         void* libraryHandle = dlopen( pLibraryName, RTLD_NOW );
         const char* libraryError = dlerror();
-        if( libraryHandle == nullptr ) {
-            printf( "Failed to Load Library %s: %s\n", pLibraryName, libraryError );
-            return static_cast<void*>( nullptr );
-        }
+
+        LLCE_ASSERT_INFO( libraryHandle != nullptr,
+            "Failed to load library `" << pLibraryName << "`: " << libraryError << "." );
 
         return libraryHandle;
     };
@@ -74,10 +71,9 @@ int32_t main() {
             const void* pLibraryHandle, const char* pSymbolName ) {
         void* symbolFunction = dlsym( const_cast<void*>(pLibraryHandle), pSymbolName );
         const char* symbolError = dlerror();
-        if( symbolFunction == nullptr ) {
-            printf( "Failed to Load Symbol %s: %s\n", pSymbolName, symbolError );
-            return static_cast<void*>( nullptr );
-        }
+
+        LLCE_ASSERT_INFO( symbolFunction != nullptr,
+            "Failed to load symbol `" << pSymbolName << "`: " << symbolError << "." );
 
         return symbolFunction;
     };
@@ -91,17 +87,14 @@ int32_t main() {
 
     void* dylibHandle = loadLibrary( dylibFilename );
     void* updateSymbol = loadLibrarySymbol( dylibHandle, "update" );
-    if( dylibHandle == nullptr || updateSymbol == nullptr ) {
-        printf( "Error: Couldn't load library at initialize!\n" );
-        return 2;
-    }
+    LLCE_ASSERT_ERROR( dylibHandle != nullptr && updateSymbol != nullptr,
+        "Couldn't load library `" << dylibFilename << "` symbols on initialize." );
+
     update_f updateFunction = (update_f)updateSymbol;
 
     int64_t prevDylibModTime, currDylibModTime;
-    if( !(prevDylibModTime = currDylibModTime = llce::platform::statModTime(dylibPath)) ) {
-        printf( "Error: Couldn't load library timestamp data at initialize!\n" );
-        return 3;
-    }
+    LLCE_ASSERT_ERROR( prevDylibModTime = currDylibModTime = llce::platform::statModTime(dylibPath),
+        "Couldn't load library `" << dylibFilename << "` stat data on initialize." );
 
     /// Update Application ///
 
@@ -111,10 +104,10 @@ int32_t main() {
     while( isRunning ) {
         simTimer.split();
 
-        if( !(currDylibModTime = llce::platform::statModTime(dylibPath)) ) {
-            printf( "Error: Couldn't load library timestamp data at step!\n" );
-            return 4;
-        } else if( currDylibModTime != prevDylibModTime ) {
+        LLCE_ASSERT_ERROR( currDylibModTime = llce::platform::statModTime(dylibPath),
+            "Couldn't load library `" << dylibFilename << "` stat data on step." );
+
+        if( currDylibModTime != prevDylibModTime ) {
             llce::platform::waitLockFile( dylibPath );
 
             dlclose( dylibHandle );

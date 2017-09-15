@@ -71,7 +71,7 @@ bool32_t platform::loadFullFile( const char* pFilePath, void* pBuffer, uint64_t 
 bool32_t platform::waitLockFile( const char* pFilePath ) {
     bool32_t waitSuccessful = false;
 
-    char lockFilePath[maxpath_bl] = "";
+    char lockFilePath[MAXPATH_BL] = "";
     strcpy( lockFilePath, pFilePath );
     strcat( lockFilePath, ".lock" );
 
