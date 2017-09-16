@@ -1,8 +1,12 @@
 #include <stdio.h>
-#include <unistd.h>
 #include <string.h>
+
+#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/file.h>
+
+#include <elf.h>
+#include <link.h>
 
 #include "platform.h"
 
@@ -85,6 +89,44 @@ bool32_t platform::waitLockFile( const char* pFilePath ) {
     }
 
     return waitSuccessful;
+}
+
+
+bool32_t platform::searchRPath( char* pFileName ) {
+    // NOTE(JRC): The contents of this function heavily reference the system
+    // implementation of the '<link.h>' dependency, which defines the C data
+    // structures that interface with dynamic library symbol tables.
+    // TODO(JRC): Extend this solution so that it loads using 'DT_RUNPATH' and
+    // '$ORIGIN' like the built-in Unix run-time loading mechanism does.
+    const char* procStringTable = nullptr;
+    int32_t procRPathOffset = -1;
+
+    for( const ElfW(Dyn)* dylibIter = _DYNAMIC; dylibIter->d_tag != DT_NULL; ++dylibIter ) {
+        if( dylibIter->d_tag == DT_STRTAB ) {
+            procStringTable = (const char*)( dylibIter->d_un.d_val );
+        } else if( dylibIter->d_tag == DT_RPATH ) {
+            procRPathOffset = (int32_t)( dylibIter->d_un.d_val );
+        } 
+    }
+
+    char origFileName[MAXPATH_BL];
+    strcpy( origFileName, pFileName );
+    strcpy( pFileName, "" );
+
+    if( procStringTable != nullptr && procRPathOffset >= 0 ) {
+        const char* procRPath = procStringTable + procRPathOffset;
+
+        for( const char* pathIter = procRPath; *pathIter != '\0'; pathIter = strchr(pathIter, ':') ) {
+            strcat( pFileName, pathIter );
+            strcat( pFileName, "/" );
+            strcat( pFileName, origFileName );
+
+            if( !access(pFileName, F_OK) ) { break; }
+            else { strcpy( pFileName, "" ); }
+        }
+    }
+
+    return strlen( pFileName ) != 0;
 }
 
 }

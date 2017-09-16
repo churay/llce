@@ -51,9 +51,7 @@ int32_t main() {
 
     mem.isInitialized = true;
 
-    // TODO(JRC): Change this so that it's pointing at the memory allocated
-    // for the application (in 'mem' variable).
-    llce::state state;
+    llce::state* state = (llce::state*)mem.permanent;
 
     /// Load Dynamic Shared Library ///
 
@@ -82,19 +80,23 @@ int32_t main() {
     // relative to the executable instead of the path relative to the run directory.
     // TODO(JRC): Create a function to calculate the full path of the dynamic
     // library so that it can be used easily in all platform functions.
-    const char* dylibFilename = "dylib.so";
-    const char* dylibPath = "bin/dylib.so";
+    const char* dylibFileName = "dylib.so";
+    char dylibFilePath[MAXPATH_BL]; {
+        strcpy( dylibFilePath, dylibFileName );
+        LLCE_ASSERT_INFO( llce::platform::searchRPath(dylibFilePath),
+            "Failed to find library " << dylibFileName << " in dynamic path." );
+    }
 
-    void* dylibHandle = loadLibrary( dylibFilename );
+    void* dylibHandle = loadLibrary( dylibFileName );
     void* updateSymbol = loadLibrarySymbol( dylibHandle, "update" );
     LLCE_ASSERT_ERROR( dylibHandle != nullptr && updateSymbol != nullptr,
-        "Couldn't load library `" << dylibFilename << "` symbols on initialize." );
+        "Couldn't load library `" << dylibFileName << "` symbols on initialize." );
 
     update_f updateFunction = (update_f)updateSymbol;
 
     int64_t prevDylibModTime, currDylibModTime;
-    LLCE_ASSERT_ERROR( prevDylibModTime = currDylibModTime = llce::platform::statModTime(dylibPath),
-        "Couldn't load library `" << dylibFilename << "` stat data on initialize." );
+    LLCE_ASSERT_ERROR( prevDylibModTime = currDylibModTime = llce::platform::statModTime(dylibFilePath),
+        "Couldn't load library `" << dylibFileName << "` stat data on initialize." );
 
     /// Update Application ///
 
@@ -104,22 +106,22 @@ int32_t main() {
     while( isRunning ) {
         simTimer.split();
 
-        LLCE_ASSERT_ERROR( currDylibModTime = llce::platform::statModTime(dylibPath),
-            "Couldn't load library `" << dylibFilename << "` stat data on step." );
+        LLCE_ASSERT_ERROR( currDylibModTime = llce::platform::statModTime(dylibFilePath),
+            "Couldn't load library `" << dylibFileName << "` stat data on step." );
 
         if( currDylibModTime != prevDylibModTime ) {
-            llce::platform::waitLockFile( dylibPath );
+            llce::platform::waitLockFile( dylibFilePath );
 
             dlclose( dylibHandle );
-            dylibHandle = loadLibrary( dylibFilename );
+            dylibHandle = loadLibrary( dylibFileName );
             updateFunction = (update_f)loadLibrarySymbol( dylibHandle, "update" );
 
             prevDylibModTime = currDylibModTime;
         }
 
-        updateFunction( &state );
+        updateFunction( state );
 
-        printf( "Current Value: %d (Elapsed Time: %f)  \r", state.value, simTimer.tt() );
+        printf( "Current Value: %d (Elapsed Time: %f)  \r", state->value, simTimer.tt() );
 
         simTimer.split( true );
     }
