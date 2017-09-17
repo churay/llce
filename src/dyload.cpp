@@ -13,7 +13,8 @@
 // TODO(JRC): This is really ugly and should be fixed is possible.
 bool32_t isRunning = true;
 
-typedef void (*update_f)( llce::state* );
+typedef void (*update_f)( llce::state*, llce::input* );
+typedef void (*render_f)( const llce::state* );
 
 int32_t main() {
     static auto processSignal = [] ( int32_t pSignal ) {
@@ -58,7 +59,6 @@ int32_t main() {
     llce::input input;
 
     llce::keyboard tty;
-    LLCE_ASSERT_ERRNO();
     LLCE_ASSERT_ERROR( tty.reading(), "Couldn't initialize keyboard input for process." );
 
     /// Load Dynamic Shared Library ///
@@ -97,50 +97,45 @@ int32_t main() {
 
     void* dylibHandle = loadLibrary( dylibFileName );
     void* updateSymbol = loadLibrarySymbol( dylibHandle, "update" );
-    LLCE_ASSERT_ERROR( dylibHandle != nullptr && updateSymbol != nullptr,
+    void* renderSymbol = loadLibrarySymbol( dylibHandle, "render" );
+    LLCE_ASSERT_ERROR(
+        dylibHandle != nullptr && updateSymbol != nullptr && renderSymbol != nullptr,
         "Couldn't load library `" << dylibFileName << "` symbols on initialize." );
 
     update_f updateFunction = (update_f)updateSymbol;
+    render_f renderFunction = (render_f)renderSymbol;
 
     int64_t prevDylibModTime, currDylibModTime;
-    LLCE_ASSERT_ERROR( prevDylibModTime = currDylibModTime = llce::platform::statModTime(dylibFilePath),
+    LLCE_ASSERT_ERROR(
+        prevDylibModTime = currDylibModTime = llce::platform::statModTime(dylibFilePath),
         "Couldn't load library `" << dylibFileName << "` stat data on initialize." );
 
     /// Update Application ///
 
     printf( "Start!\n" );
 
-    //llce::timer simTimer( 60.0, llce::timer::type::fps );
-    llce::timer simTimer( 2.0, llce::timer::type::fps );
+    llce::timer simTimer( 60.0, llce::timer::type::fps );
     while( isRunning ) {
         simTimer.split();
 
-        /*
+        tty.read( &input.keys[0] );
+
         LLCE_ASSERT_ERROR( currDylibModTime = llce::platform::statModTime(dylibFilePath),
             "Couldn't load library `" << dylibFileName << "` stat data on step." );
-
         if( currDylibModTime != prevDylibModTime ) {
             llce::platform::waitLockFile( dylibFilePath );
 
             dlclose( dylibHandle );
             dylibHandle = loadLibrary( dylibFileName );
             updateFunction = (update_f)loadLibrarySymbol( dylibHandle, "update" );
+            renderFunction = (render_f)loadLibrarySymbol( dylibHandle, "render" );
 
             prevDylibModTime = currDylibModTime;
         }
 
-        updateFunction( state );
-
-        printf( "Current Value: %d (Elapsed Time: %f)  \r", state->xpos, simTimer.tt() );
-        */
-
-        tty.read( &input.keys[0] );
-        printf( "Q Pressed?: %d, H Pressed?: %d, J Pressed?: %d, K Pressed?: %d, L Pressed?: %d\n",
-            input.keys[llce::keyboard::keycode::q],
-            input.keys[llce::keyboard::keycode::h],
-            input.keys[llce::keyboard::keycode::j],
-            input.keys[llce::keyboard::keycode::k],
-            input.keys[llce::keyboard::keycode::l] );
+        state->tt = simTimer.tt();
+        updateFunction( state, &input );
+        renderFunction( state );
 
         simTimer.split( true );
     }

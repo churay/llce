@@ -17,8 +17,9 @@ struct memory {
 };
 
 struct state {
-    int32_t xpos = 0;
-    int32_t ypos = 0;
+    float64_t xpos = 0.0;
+    float64_t ypos = 0.0;
+    float64_t tt = 0.0;
 };
 
 struct input {
