@@ -18,7 +18,8 @@ keyboard::keyboard() {
 
     mOverwrittenTerm = {};
     mOverwrittenMode = -1;
-    if( !ioctl(STDIN_FILENO, KDGKBMODE, &mOverwrittenMode) ) {
+
+    if( ioctl(STDIN_FILENO, KDGKBMODE, &mOverwrittenMode) >= 0 ) {
         tcgetattr( STDIN_FILENO, &mOverwrittenTerm );
 
         // NOTE(JRC): These commands disable buffering, echoing, and key processing

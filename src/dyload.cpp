@@ -3,6 +3,7 @@
 #include <sys/mman.h>
 #include <dlfcn.h>
 #include <signal.h>
+#include <errno.h>
 
 #include "dylib.h"
 #include "timer.h"
@@ -57,7 +58,7 @@ int32_t main() {
     llce::input input;
 
     llce::keyboard tty;
-    // LLCE_ASSERT_ERROR( tty.reading(), "Couldn't initialize keyboard input for process." );
+    LLCE_ASSERT_ERROR( tty.reading(), "Couldn't initialize keyboard input for process." );
 
     /// Load Dynamic Shared Library ///
 
@@ -112,6 +113,7 @@ int32_t main() {
     while( isRunning ) {
         simTimer.split();
 
+        /*
         LLCE_ASSERT_ERROR( currDylibModTime = llce::platform::statModTime(dylibFilePath),
             "Couldn't load library `" << dylibFileName << "` stat data on step." );
 
@@ -128,9 +130,10 @@ int32_t main() {
         updateFunction( state );
 
         printf( "Current Value: %d (Elapsed Time: %f)  \r", state->xpos, simTimer.tt() );
+        */
 
-        //tty.read( &input.keys[0] );
-        //printf( "Q Pressed?: %d", input.keys[llce::keyboard::keycode::q] );
+        tty.read( &input.keys[0] );
+        printf( "Q Pressed?: %d", input.keys[llce::keyboard::keycode::q] );
 
         simTimer.split( true );
     }

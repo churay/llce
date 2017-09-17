@@ -16,8 +16,13 @@ lib/*
 
 ## Logs Files ##
 *.log
-*.gdb
 *.lock
+
+## GDB Files ##
+
+*.gdb
+.gdbinit
+.gdb_history
 
 ## OS Files ##
 *.swp

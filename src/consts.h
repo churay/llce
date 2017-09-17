@@ -60,4 +60,12 @@ typedef double float64_t;
         } \
     } while (false)
 
+#define LLCE_ASSERT_ERRNO() \
+    do { \
+        if (errno != 0) { \
+            std::cerr << "[ERRNO] (" << __FILE__ << ":" << __LINE__ << "): " << strerror( errno ) << std::endl; \
+            exit(1); \
+        } \
+    } while (false)
+
 #endif
