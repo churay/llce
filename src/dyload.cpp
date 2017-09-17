@@ -48,10 +48,16 @@ int32_t main() {
         "Couldn't allocate process memory; " <<
         "permanent storage allocation failed with code " << (int64_t)mem.permanent << ", " <<
         "transient storage allocation failed with code " << (int64_t)mem.transient << "." );
-
     mem.isInitialized = true;
 
     llce::state* state = (llce::state*)mem.permanent;
+
+    /// Initialize Input State ///
+
+    llce::input input;
+
+    llce::keyboard tty;
+    // LLCE_ASSERT_ERROR( tty.reading(), "Couldn't initialize keyboard input for process." );
 
     /// Load Dynamic Shared Library ///
 
@@ -83,7 +89,7 @@ int32_t main() {
     const char* dylibFileName = "dylib.so";
     char dylibFilePath[MAXPATH_BL]; {
         strcpy( dylibFilePath, dylibFileName );
-        LLCE_ASSERT_INFO( llce::platform::searchRPath(dylibFilePath),
+        LLCE_ASSERT_ERROR( llce::platform::searchRPath(dylibFilePath),
             "Failed to find library " << dylibFileName << " in dynamic path." );
     }
 
@@ -121,7 +127,10 @@ int32_t main() {
 
         updateFunction( state );
 
-        printf( "Current Value: %d (Elapsed Time: %f)  \r", state->value, simTimer.tt() );
+        printf( "Current Value: %d (Elapsed Time: %f)  \r", state->xpos, simTimer.tt() );
+
+        //tty.read( &input.keys[0] );
+        //printf( "Q Pressed?: %d", input.keys[llce::keyboard::keycode::q] );
 
         simTimer.split( true );
     }
