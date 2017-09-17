@@ -5,9 +5,6 @@
 #include <fcntl.h>
 #include <termios.h>
 
-#include <linux/kd.h>
-#include <sys/ioctl.h>
-
 #include "keyboard.h"
 
 namespace llce {
@@ -16,28 +13,26 @@ keyboard::keyboard() {
     // NOTE(JRC): This command makes STDIN a non-blocking input source.
     fcntl( STDIN_FILENO, F_SETFL, (fcntl(STDIN_FILENO, F_GETFL) | O_NONBLOCK) );
 
-    mOverwrittenTerm = {};
-    mOverwrittenMode = -1;
-
-    if( ioctl(STDIN_FILENO, KDGKBMODE, &mOverwrittenMode) >= 0 ) {
-        tcgetattr( STDIN_FILENO, &mOverwrittenTerm );
-
-        // NOTE(JRC): These commands disable buffering, echoing, and key processing
-        // in the TTY for the process (see: http://www.gcat.org.uk/tech/?p=70).
-        struct termios newTerm = mOverwrittenTerm;
+    // NOTE(JRC): This code is a modified version of the code on GCat's
+    // technical blog on raw keyboard input from Linux that doesn't add raw
+    // support due to bad driver support for 'ioctl' (see: http://www.gcat.org.uk/tech/?p=70).
+    mOldSettings = {};
+    if( !tcgetattr(STDIN_FILENO, &mOldSettings) ) {
+        struct termios newTerm = mOldSettings;
         newTerm.c_lflag &= -( ICANON | ECHO | ISIG );
         newTerm.c_iflag &= -( ISTRIP | INLCR | ICRNL | IGNCR | IXON | IXOFF );
         tcsetattr( STDIN_FILENO, TCSANOW, &newTerm );
 
-        ioctl( STDIN_FILENO, KDSKBMODE, K_RAW );
+        // TODO(JRC): Verify that the 'tcsetattr' call fully worked before
+        // allowing this 'keyboard' instance to register that it's running.
+        mReading = true;
     }
 }
 
 
 keyboard::~keyboard() {
     if( reading() ) {
-        tcsetattr( STDIN_FILENO, TCSAFLUSH, &mOverwrittenTerm );
-        ioctl( STDIN_FILENO, KDSKBMODE, mOverwrittenMode );
+        tcsetattr( STDIN_FILENO, TCSAFLUSH, &mOldSettings );
     }
 }
 
@@ -65,7 +60,7 @@ void keyboard::read( bool8_t* pBuffer ) const {
 
 
 bool32_t keyboard::reading() const {
-    return mOverwrittenMode >= 0;
+    return mReading;
 }
 
 }

@@ -58,6 +58,7 @@ int32_t main() {
     llce::input input;
 
     llce::keyboard tty;
+    LLCE_ASSERT_ERRNO();
     LLCE_ASSERT_ERROR( tty.reading(), "Couldn't initialize keyboard input for process." );
 
     /// Load Dynamic Shared Library ///
@@ -109,7 +110,8 @@ int32_t main() {
 
     printf( "Start!\n" );
 
-    llce::timer simTimer( 60.0, llce::timer::type::fps );
+    //llce::timer simTimer( 60.0, llce::timer::type::fps );
+    llce::timer simTimer( 2.0, llce::timer::type::fps );
     while( isRunning ) {
         simTimer.split();
 
@@ -133,7 +135,12 @@ int32_t main() {
         */
 
         tty.read( &input.keys[0] );
-        printf( "Q Pressed?: %d", input.keys[llce::keyboard::keycode::q] );
+        printf( "Q Pressed?: %d, H Pressed?: %d, J Pressed?: %d, K Pressed?: %d, L Pressed?: %d\n",
+            input.keys[llce::keyboard::keycode::q],
+            input.keys[llce::keyboard::keycode::h],
+            input.keys[llce::keyboard::keycode::j],
+            input.keys[llce::keyboard::keycode::k],
+            input.keys[llce::keyboard::keycode::l] );
 
         simTimer.split( true );
     }

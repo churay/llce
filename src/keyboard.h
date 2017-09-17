@@ -27,8 +27,8 @@ class keyboard {
 
     /// Class Fields ///
 
-    struct termios mOverwrittenTerm;
-    int32_t mOverwrittenMode;
+    bool32_t mReading;
+    struct termios mOldSettings;
 };
 
 }
