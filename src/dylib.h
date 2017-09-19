@@ -16,11 +16,15 @@ struct memory {
     void* transient = nullptr;
 };
 
+
 struct state {
-    float64_t xpos = 0.0;
-    float64_t ypos = 0.0;
+    const uint8_t lineLength = 5;
+    int8_t line[5] = { 1, 2, 3, 4, 5 };
+    uint8_t lineCursor = 0;
+    uint8_t linePadding = 0;
     float64_t time = 0.0;
 };
+
 
 struct input {
     bool8_t keys[keyboard::keycode::length] = { false, false, false, false, false };

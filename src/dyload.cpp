@@ -44,7 +44,10 @@ int32_t main() {
         "transient storage allocation failed with code " << (int64_t)mem.transient << "." );
     mem.isInitialized = true;
 
-    llce::state* state = (llce::state*)( (char*)mem.permanent );
+    llce::state* state = (llce::state*)( (char*)mem.permanent ); {
+        llce::state temp;
+        memcpy( state, &temp, sizeof(llce::state) );
+    }
 
     /// Initialize Input State ///
 
