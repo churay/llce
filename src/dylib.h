@@ -19,7 +19,7 @@ struct memory {
 struct state {
     float64_t xpos = 0.0;
     float64_t ypos = 0.0;
-    float64_t tt = 0.0;
+    float64_t time = 0.0;
 };
 
 struct input {

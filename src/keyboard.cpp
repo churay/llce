@@ -21,11 +21,15 @@ keyboard::keyboard() {
         struct termios newTerm = mOldSettings;
         newTerm.c_lflag &= -( ICANON | ECHO | ISIG );
         newTerm.c_iflag &= -( ISTRIP | INLCR | ICRNL | IGNCR | IXON | IXOFF );
-        tcsetattr( STDIN_FILENO, TCSANOW, &newTerm );
-
         // TODO(JRC): Verify that the 'tcsetattr' call fully worked before
         // allowing this 'keyboard' instance to register that it's running.
-        mReading = true;
+        mReading = !tcsetattr( STDIN_FILENO, TCSANOW, &newTerm );
+
+        // TODO(JRC): The following lines are supposed to make the terminal
+        // a raw input terminal, but this setting ends up adding more complications
+        // than is worthwhile for this example.
+        // cfmakeraw( &newTerm );
+        // mReading = !tcsetattr( STDIN_FILENO, TCSANOW, &newTerm );
     }
 }
 

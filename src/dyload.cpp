@@ -2,26 +2,18 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <dlfcn.h>
-#include <signal.h>
 #include <errno.h>
 
 #include "dylib.h"
 #include "timer.h"
+#include "keyboard.h"
 #include "platform.h"
 #include "consts.h"
 
-// TODO(JRC): This is really ugly and should be fixed is possible.
-bool32_t isRunning = true;
-
 typedef void (*update_f)( llce::state*, llce::input* );
-typedef void (*render_f)( const llce::state* );
+typedef void (*render_f)( const llce::state*, const llce::input* );
 
 int32_t main() {
-    static auto processSignal = [] ( int32_t pSignal ) {
-        isRunning = false;
-    };
-    signal( SIGINT, processSignal );
-
     /// Initialize Application Memory/State ///
 
     llce::memory mem;
@@ -52,11 +44,11 @@ int32_t main() {
         "transient storage allocation failed with code " << (int64_t)mem.transient << "." );
     mem.isInitialized = true;
 
-    llce::state* state = (llce::state*)mem.permanent;
+    llce::state* state = (llce::state*)( (char*)mem.permanent );
 
     /// Initialize Input State ///
 
-    llce::input input;
+    llce::input* input = (llce::input*)( (char*)mem.permanent + sizeof(llce::state) );
 
     llce::keyboard tty;
     LLCE_ASSERT_ERROR( tty.reading(), "Couldn't initialize keyboard input for process." );
@@ -114,11 +106,16 @@ int32_t main() {
 
     printf( "Start!\n" );
 
-    llce::timer simTimer( 60.0, llce::timer::type::fps );
+    bool32_t isRunning = true;
+    llce::timer simTimer( 2.0, llce::timer::type::fps );
+
     while( isRunning ) {
         simTimer.split();
 
-        tty.read( &input.keys[0] );
+        tty.read( input->keys );
+        if( input->keys[llce::keyboard::keycode::q] ) {
+            isRunning = false;
+        }
 
         LLCE_ASSERT_ERROR( currDylibModTime = llce::platform::statModTime(dylibFilePath),
             "Couldn't load library `" << dylibFileName << "` stat data on step." );
@@ -133,9 +130,9 @@ int32_t main() {
             prevDylibModTime = currDylibModTime;
         }
 
-        state->tt = simTimer.tt();
-        updateFunction( state, &input );
-        renderFunction( state );
+        state->time = simTimer.tt();
+        updateFunction( state, input );
+        renderFunction( state, input );
 
         simTimer.split( true );
     }
