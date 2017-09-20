@@ -12,6 +12,7 @@ CXX_LIB_INCLS = `pkg-config --static --libs sdl2`
 PROJ_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BIN_DIR = $(PROJ_DIR)/bin
 OBJ_DIR = $(PROJ_DIR)/obj
+OUT_DIR = $(PROJ_DIR)/out
 SRC_DIR = $(PROJ_DIR)/src
 
 PROJ_EXE = $(BIN_DIR)/llce
@@ -33,11 +34,11 @@ lock_command = touch $(1).lock && flock -x -w 1 $(1).lock -c $(2) && rm $(1).loc
 all : $(PROJ_EXE)
 
 llce : $(PROJ_EXE)
-$(PROJ_EXE) : $(PROJ_MAIN) $(SRC_DIR)/texture.cpp $(SRC_DIR)/timer.cpp | $(BIN_DIR)
+$(PROJ_EXE) : $(PROJ_MAIN) $(SRC_DIR)/texture.cpp $(SRC_DIR)/timer.cpp | $(BIN_DIR) $(OUT_DIR)
 	$(call lock_command,$@,'$(CXX) $(CXX_FLAGS) $(CXX_LIB_FLAGS) $(CXX_INCLS) $^ -o $@ $(CXX_LIB_INCLS)')
 
 dyload : $(EX_EXE)
-$(EX_EXE) : $(EX_MAIN) $(BIN_DIR)/platform.o $(BIN_DIR)/keyboard.o $(BIN_DIR)/timer.o $(BIN_DIR)/dylib.so | $(BIN_DIR)
+$(EX_EXE) : $(EX_MAIN) $(BIN_DIR)/platform.o $(BIN_DIR)/keyboard.o $(BIN_DIR)/timer.o $(BIN_DIR)/dylib.so | $(BIN_DIR) $(OUT_DIR)
 	$(call lock_command,$@,'$(CXX) $(CXX_FLAGS) -ldl $(CXX_INCLS) $(filter-out %.so,$^) -o $@')
 
 $(BIN_DIR)/%.so : $(SRC_DIR)/%.cpp $(SRC_DIR)/%.h
@@ -46,7 +47,7 @@ $(BIN_DIR)/%.so : $(SRC_DIR)/%.cpp $(SRC_DIR)/%.h
 $(BIN_DIR)/%.o : $(SRC_DIR)/%.cpp $(SRC_DIR)/%.h
 	$(call lock_command,$@,'$(CXX) $(CXX_FLAGS) -c $< -o $@')
 
-$(BIN_DIR) $(OBJ_DIR) :
+$(BIN_DIR) $(OBJ_DIR) $(OUT_DIR) :
 	mkdir -p $@
 
 clean :

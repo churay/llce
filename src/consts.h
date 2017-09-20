@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <iostream>
 
 // TODO(JRC): Figure out some way to guarantee that the floating-point types

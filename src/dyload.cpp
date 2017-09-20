@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <string.h>
-#include <sys/mman.h>
 #include <dlfcn.h>
-#include <errno.h>
+#include <sys/mman.h>
 
 #include "dylib.h"
 #include "timer.h"
@@ -109,6 +108,8 @@ int32_t main() {
 
     printf( "Start!\n" );
 
+    bool32_t isRecording = false, isReplaying = false;
+
     bool32_t isRunning = true;
     llce::timer simTimer( 2.0, llce::timer::type::fps );
 
@@ -118,6 +119,21 @@ int32_t main() {
         tty.read( input->keys );
         if( input->keys[llce::keyboard::keycode::q] ) {
             isRunning = false;
+        } if( input->keys[llce::keyboard::keycode::r] ) {
+            if( !isRecording ) {
+                // TODO(JRC): Start the recording by outputting all of the state at this
+                // moment and start recording the input.
+                // NOTE(JRC): We can continually write to the file if we keep the handle
+                // open as writes will continously append to the end of the file (the
+                // current location of the file pointer).
+                // saveFullFile( "out/state.dat", mem->, sizeof() );
+            } else {
+                // TODO(JRC): Finish the recording and then start the playback.
+                // TODO(JRC): In the playback, make sure to loop once the end of the
+                // recorded input file is reached.
+                // loadFullFile( "out/state.dat", mem->, sizeof() );
+            }
+            isRecording = !isRecording;
         }
 
         LLCE_ASSERT_ERROR( currDylibModTime = llce::platform::statModTime(dylibFilePath),
