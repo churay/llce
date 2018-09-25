@@ -19,6 +19,10 @@ int32_t main() {
     mem.permanentSize = MEGABYTE_BL( 64 );
     mem.transientSize = GIGABYTE_BL( 1 );
 
+    // TODO(JRC): The base address should be somewhere outside of the application
+    // space in the debug case to allow for loop-live code editing and null in
+    // the application case so that it's allocated at a location the OS is happy with.
+
     // TODO(JRC): The mapped pieces of memory should be mapped to a static base
     // address so that pointers remain valid even if we load state from a file
     // during loop-live code editing.

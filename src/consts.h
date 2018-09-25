@@ -26,6 +26,8 @@ typedef double float64_t;
 #define MAXPATH_BL 4096
 
 // TODO(JRC): Consider moving these macros to a different module.
+#define LLCE_DYLOAD_API extern "C"
+
 // TODO(JRC): Consider changing these functions to use 'prinf' functionality
 // instead of 'std::cerr' functionality.
 // NOTE(JRC): Code inspired by Stack Overflow response:
