@@ -8,6 +8,9 @@ namespace llce {
 namespace platform {
     /// Namespace Functions ///
 
+    void* allocBuffer( uint64_t pBufferLength, void* pBufferStart = nullptr );
+    bool32_t deallocBuffer( void* pBuffer, uint64_t pBufferLength );
+
     int64_t statSize( const char* pFilePath );
     int64_t statModTime( const char* pFilePath );
 

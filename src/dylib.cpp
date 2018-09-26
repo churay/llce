@@ -2,7 +2,7 @@
 
 #include "dylib.h"
 
-LLCE_DYLOAD_API void update( llce::state* pState, llce::input* pInput ) {
+LLCE_DYLOAD_API void update( dylib::state* pState, dylib::input* pInput ) {
     // Handle Cursor Slide //
 
     if( pInput->keys[llce::keyboard::keycode::h] ) {
@@ -23,7 +23,7 @@ LLCE_DYLOAD_API void update( llce::state* pState, llce::input* pInput ) {
 }
 
 
-LLCE_DYLOAD_API void render( const llce::state* pState, const llce::input* pInput ) {
+LLCE_DYLOAD_API void render( const dylib::state* pState, const dylib::input* pInput ) {
     printf( "(%.3f) %d %d [%d] %d %d\r",
         pState->time,
         pState->line[(pState->lineCursor + 0) % pState->lineLength],

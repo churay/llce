@@ -1,60 +1,40 @@
 #include <stdio.h>
 #include <string.h>
 #include <dlfcn.h>
-#include <sys/mman.h>
 
 #include "dylib.h"
+#include "memory.h"
 #include "timer.h"
 #include "keyboard.h"
 #include "platform.h"
 #include "consts.h"
 
-typedef void (*update_f)( llce::state*, llce::input* );
-typedef void (*render_f)( const llce::state*, const llce::input* );
+typedef void (*update_f)( dylib::state*, dylib::input* );
+typedef void (*render_f)( const dylib::state*, const dylib::input* );
 
 int32_t main() {
     /// Initialize Application Memory/State ///
 
-    llce::memory mem;
-    mem.permanentSize = MEGABYTE_BL( 64 );
-    mem.transientSize = GIGABYTE_BL( 1 );
-
-    // TODO(JRC): The base address should be somewhere outside of the application
-    // space in the debug case to allow for loop-live code editing and null in
-    // the application case so that it's allocated at a location the OS is happy with.
-
     // TODO(JRC): The mapped pieces of memory should be mapped to a static base
     // address so that pointers remain valid even if we load state from a file
     // during loop-live code editing.
-    mem.permanent = mmap(
-        nullptr,                         // Memory Start Address
-        mem.permanentSize,               // Allocation Length (Bytes)
-        PROT_READ | PROT_WRITE,          // Protection Flags (Read/Write)
-        MAP_ANONYMOUS | MAP_PRIVATE,     // Map Options (In-Memory, Private to Process)
-        -1,                              // File Descriptor
-        0 );                             // File Offset
-    mem.transient = mmap(
-        nullptr,                         // Memory Start Address
-        mem.transientSize,               // Allocation Length (Bytes)
-        PROT_READ | PROT_WRITE,          // Protection Flags (Read/Write)
-        MAP_ANONYMOUS | MAP_PRIVATE,     // Map Options (In-Memory, Private to Process)
-        -1,                              // File Descriptor
-        0 );                             // File Offset
+    // TODO(JRC): The base address should be somewhere outside of the application
+    // space in the debug case to allow for loop-live code editing and null in
+    // the application case so that it's allocated at a location the OS is happy with.
+    const uint64_t cStaticBufferIdx = 0, cDynamicBufferIdx = 1;
+    const uint64_t cBufferLengths[] = { MEGABYTE_BL(64), GIGABYTE_BL(1) };
+    const uint64_t cBufferCount = sizeof( cBufferLengths ) / sizeof( cBufferLengths[0] );
 
-    LLCE_ASSERT_ERROR( mem.permanent != (void*)-1 && mem.transient != (void*)-1,
-        "Couldn't allocate process memory; " <<
-        "permanent storage allocation failed with code " << (int64_t)mem.permanent << ", " <<
-        "transient storage allocation failed with code " << (int64_t)mem.transient << "." );
-    mem.isInitialized = true;
+    llce::memory mem( cBufferCount, &cBufferLengths[0] );
 
-    llce::state* state = (llce::state*)( (char*)mem.permanent ); {
-        llce::state temp;
-        memcpy( state, &temp, sizeof(llce::state) );
+    dylib::state* state = (dylib::state*)mem.allocate( cStaticBufferIdx, sizeof(dylib::state) ); {
+        dylib::state temp;
+        memcpy( state, &temp, sizeof(dylib::state) );
     }
 
     /// Initialize Input State ///
 
-    llce::input* input = (llce::input*)( (char*)mem.permanent + sizeof(llce::state) );
+    dylib::input* input = (dylib::input*)mem.allocate( cStaticBufferIdx, sizeof(dylib::input) );
 
     llce::keyboard tty;
     LLCE_ASSERT_ERROR( tty.reading(), "Couldn't initialize keyboard input for process." );
@@ -159,9 +139,6 @@ int32_t main() {
 
         simTimer.split( true );
     }
-
-    munmap( mem.permanent, mem.permanentSize );
-    munmap( mem.transient, mem.transientSize );
 
     printf( "\nEnd!\n" );
 

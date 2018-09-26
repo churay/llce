@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include <unistd.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/file.h>
 
@@ -11,6 +12,30 @@
 #include "platform.h"
 
 namespace llce {
+
+void* platform::allocBuffer( uint64_t pBufferLength, void* pBufferBase ) {
+    // TODO(JRC): Remove this and replace with real functionality.
+    LLCE_ASSERT_ERROR( pBufferBase == nullptr,
+        "Memory chunk allocations don't currently support base address " <<
+        "allocation requests." );
+
+    void* buffer = mmap(
+        pBufferBase,                     // Memory Start Address
+        pBufferLength,                   // Allocation Length (Bytes)
+        PROT_READ | PROT_WRITE,          // Protection Flags (Read/Write)
+        MAP_ANONYMOUS | MAP_PRIVATE,     // Map Options (In-Memory, Private to Process)
+        -1,                              // File Descriptor
+        0 );                             // File Offset
+
+    return ( buffer != (void*)-1 ) ? buffer : nullptr;
+}
+
+
+bool32_t platform::deallocBuffer( void* pBuffer, uint64_t pBufferLength ) {
+    int64_t status = munmap( pBuffer, pBufferLength );
+    return status == 0;
+}
+
 
 int64_t platform::statSize( const char* pFilePath ) {
     int64_t fileSize = 0;

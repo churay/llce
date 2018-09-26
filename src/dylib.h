@@ -4,18 +4,7 @@
 #include "keyboard.h"
 #include "consts.h"
 
-namespace llce {
-
-struct memory {
-    bool32_t isInitialized = false;
-
-    uint64_t permanentSize = 0;
-    void* permanent = nullptr;
-
-    uint64_t transientSize = 0;
-    void* transient = nullptr;
-};
-
+namespace dylib {
 
 struct state {
     const uint8_t lineLength = 5;
@@ -27,7 +16,7 @@ struct state {
 
 
 struct input {
-    bool8_t keys[keyboard::keycode::length] = { false, false, false, false, false };
+    bool8_t keys[llce::keyboard::keycode::length] = { false, false, false, false, false };
 };
 
 }
