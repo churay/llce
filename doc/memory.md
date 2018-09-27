@@ -45,3 +45,4 @@ The information for this listing was pulled from the following resources:
 
 - [Server Fault: What Does Virtual Memory Size Mean?](https://serverfault.com/a/138625)
 - [MG's Notes: VIRT, RES, and SHR Memory](http://mugurel.sumanariu.ro/linux/the-difference-among-virt-res-and-shr-in-top-output/)
+- [Stack Overflow: What are RSS and VSZ in Linux Memory Management?](https://stackoverflow.com/a/21049737/837221)
