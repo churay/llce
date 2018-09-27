@@ -13,12 +13,15 @@ PROJ_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BIN_DIR = $(PROJ_DIR)/bin
 OBJ_DIR = $(PROJ_DIR)/obj
 OUT_DIR = $(PROJ_DIR)/out
+ETC_DIR = $(PROJ_DIR)/etc
 SRC_DIR = $(PROJ_DIR)/src
 
 PROJ_EXE = $(BIN_DIR)/llce
+PROJ_EXE_DEBUG = $(PROJ_EXE)_debug
 PROJ_MAIN = $(SRC_DIR)/llce.cpp
 
 EX_EXE = $(BIN_DIR)/dyload
+EX_EXE_DEBUG = $(EX_EXE)_debug
 EX_MAIN = $(SRC_DIR)/dyload.cpp
 
 ### Project Functions ###
@@ -27,11 +30,20 @@ EX_MAIN = $(SRC_DIR)/dyload.cpp
 # so a special command is needed to inform other processes that a file is in use.
 lock_command = touch $(1).lock && flock -x -w 1 $(1).lock -c $(2) && rm $(1).lock
 
+
 ### Project Targets ###
 
 .PHONY : all
 
 all : $(PROJ_EXE)
+
+llce_debug : $(PROJ_EXE_DEBUG)
+$(PROJ_EXE_DEBUG) : $(PROJ_EXE) $(ETC_DIR)/no_aslr.sh
+	$(ETC_DIR)/no_aslr.sh $< $@
+
+dyload_debug : $(EX_EXE_DEBUG)
+$(EX_EXE_DEBUG) : $(EX_EXE) $(ETC_DIR)/no_aslr.sh
+	$(ETC_DIR)/no_aslr.sh $< $@
 
 llce : $(PROJ_EXE)
 $(PROJ_EXE) : $(PROJ_MAIN) $(SRC_DIR)/texture.cpp $(SRC_DIR)/timer.cpp | $(BIN_DIR) $(OUT_DIR)
