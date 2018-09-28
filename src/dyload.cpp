@@ -15,17 +15,15 @@ typedef void (*render_f)( const dylib::state*, const dylib::input* );
 int32_t main() {
     /// Initialize Application Memory/State ///
 
-    // TODO(JRC): The mapped pieces of memory should be mapped to a static base
-    // address so that pointers remain valid even if we load state from a file
-    // during loop-live code editing.
-    // TODO(JRC): The base address should be somewhere outside of the application
-    // space in the debug case to allow for loop-live code editing and null in
-    // the application case so that it's allocated at a location the OS is happy with.
+    // NOTE(JRC): This base address was chosen by following the steps enumerated
+    // in the 'doc/static_address.md' documentation file.
+    void* cBufferAddress = (void*)0x0000100000000000;
+
     const uint64_t cStaticBufferIdx = 0, cDynamicBufferIdx = 1;
     const uint64_t cBufferLengths[] = { MEGABYTE_BL(64), GIGABYTE_BL(1) };
     const uint64_t cBufferCount = sizeof( cBufferLengths ) / sizeof( cBufferLengths[0] );
 
-    llce::memory mem( cBufferCount, &cBufferLengths[0] );
+    llce::memory mem( cBufferCount, &cBufferLengths[0], cBufferAddress );
 
     dylib::state* state = (dylib::state*)mem.allocate( cStaticBufferIdx, sizeof(dylib::state) ); {
         dylib::state temp;

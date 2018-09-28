@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <errno.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -14,20 +15,43 @@
 namespace llce {
 
 void* platform::allocBuffer( uint64_t pBufferLength, void* pBufferBase ) {
-    // TODO(JRC): Remove this and replace with real functionality.
-    LLCE_ASSERT_ERROR( pBufferBase == nullptr,
-        "Memory chunk allocations don't currently support base address " <<
-        "allocation requests." );
+    const int64_t cPermissionFlags = PROT_READ | PROT_WRITE;
+    const int64_t cAllocFlags = MAP_ANONYMOUS | MAP_PRIVATE |
+        ( (pBufferBase != nullptr) ? MAP_FIXED : 0 );
+
+    // TODO(JRC): This whole piece is a bit messy and prone to race conditions
+    // and thus should be cleaned up if possible.
+    if( cAllocFlags & MAP_FIXED ) {
+        const int64_t cPageSize = sysconf( _SC_PAGESIZE );
+
+        bool8_t* bufferStart = (bool8_t*)pBufferBase;
+        bool8_t* bufferEnd = (bool8_t*)pBufferBase + pBufferLength;
+        unsigned char mincoreBuffer = false;
+
+        bool32_t isBufferOccupied = false;
+        for( bool8_t* pageIt = bufferStart; pageIt < bufferEnd; pageIt += cPageSize ) {
+            isBufferOccupied |=
+                mincore( pageIt, cPageSize, &mincoreBuffer ) == -1 && errno == ENOMEM;
+        }
+
+        LLCE_ASSERT_ERROR( !isBufferOccupied,
+            "Unable to allocate buffer of length " << pBufferLength << " " <<
+            "at base address " << pBufferBase << "; memory block is preoccupied." );
+    }
 
     void* buffer = mmap(
-        pBufferBase,                     // Memory Start Address
-        pBufferLength,                   // Allocation Length (Bytes)
-        PROT_READ | PROT_WRITE,          // Protection Flags (Read/Write)
-        MAP_ANONYMOUS | MAP_PRIVATE,     // Map Options (In-Memory, Private to Process)
-        -1,                              // File Descriptor
-        0 );                             // File Offset
+        pBufferBase,             // Memory Start Address
+        pBufferLength,           // Allocation Length (Bytes)
+        cPermissionFlags,        // Data Permission Flags (Read/Write)
+        cAllocFlags,             // Map Options (In-Memory, Private to Process)
+        -1,                      // File Descriptor
+        0 );                     // File Offset
 
-    return ( buffer != (void*)-1 ) ? buffer : nullptr;
+    LLCE_ASSERT_ERROR( buffer != MAP_FAILED,
+        "Unable to allocate buffer of length " << pBufferLength << "; " <<
+        strerror(errno) );
+
+    return buffer;
 }
 
 
