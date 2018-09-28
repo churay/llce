@@ -30,13 +30,39 @@ and streamlined.
 
 ### Process: Finding an Adequate Static Address ###
 
-Since a static address must remain constant between executions of an application
-for it to be useful, it needs to be determined and set before the application even
-initializes.
+Since a static address must remain consistent between executions of an application
+to be useful, it needs to be determined and set at compile time for any target
+process binary. The following procedure can be leveraged to determine current size
+of an application binary and use this information to set an appropriate process
+base address:
 
-1. (TODO: Add Steps)
-1. (TODO: Add Steps)
+1. `getconf PAGE_SIZE`: The output of this command is the page size for the current
+   machine, which is 4096 (i.e. 2^12) for many Unix-based systems. This value will
+   be used to inform the offset of the final static address (which will be aligned
+   to the page size to minimize page occupancy and (consequently) maximize performance).
+1. `ps -aux | grep [process name]`: This command will print out process metadata
+   for processes containing `[process name]` in their executable name. The piece
+   of metadata required for the next step is the process ID, which is given in the
+   second column of this command's output. The code listing below contains example
+   output for this command with the process ID highlighted:
+   ```
+   user **pid** cpu% mem% vmem rmem tty stat start time command
+   ```
+1. `sudo pmap -x [process id]`: Feeding the process ID extracted during the last
+   step into the `pmap` command outputs all the memory address information for each
+   memory chunk and instruction set loaded by the application. The address space
+   for an application will be split into two main components: the application chunk
+   (lower address values) and the library chunk (higher address values). The static
+   address value should be chosen to be a location between these two chunks that
+   accomodates the projected development needs of the application. If the application
+   is projected to be library-heavy, a static address closer to the lower end should
+   be selected, and vice versa. Additionally, the chosen static address should be
+   aligned to the page size determined in the earlier steps of this process.
 
+Ultimately, these steps could be automated to make updating loop-live applications
+even easier, but the time and effort it would take to develop the associated scripts
+isn't worthwhile for most application (which may end up changing the static address
+for an application once, if at all).
 
 ### Resources ###
 
