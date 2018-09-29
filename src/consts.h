@@ -20,6 +20,7 @@ typedef double float64_t;
 #define KILOBYTE_BL(v) ((v)*1024)
 #define MEGABYTE_BL(v) (KILOBYTE_BL(v)*1024)
 #define GIGABYTE_BL(v) (MEGABYTE_BL(v)*1024)
+#define TERABYTE_BL(v) (GIGABYTE_BL(v)*1024)
 
 // NOTE(JRC): This is the maximum byte length according to the author of eCryptfs.
 // (see: https://unix.stackexchange.com/a/32834)

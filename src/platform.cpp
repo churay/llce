@@ -30,8 +30,9 @@ void* platform::allocBuffer( uint64_t pBufferLength, void* pBufferBase ) {
 
         bool32_t isBufferOccupied = false;
         for( bool8_t* pageIt = bufferStart; pageIt < bufferEnd; pageIt += cPageSize ) {
-            isBufferOccupied |=
-                mincore( pageIt, cPageSize, &mincoreBuffer ) == -1 && errno == ENOMEM;
+            isBufferOccupied |= !(
+                mincore( pageIt, cPageSize, &mincoreBuffer ) == -1 &&
+                errno == ENOMEM );
         }
 
         LLCE_ASSERT_ERROR( !isBufferOccupied,
