@@ -28,3 +28,7 @@ lib/*
 *.swp
 *.swo
 *.*.sw*
+
+## Data Files ##
+#
+out/*

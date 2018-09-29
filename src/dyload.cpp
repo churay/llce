@@ -17,10 +17,10 @@ int32_t main() {
 
     // NOTE(JRC): This base address was chosen by following the steps enumerated
     // in the 'doc/static_address.md' documentation file.
-    void* cBufferAddress = (void*)0x0000100000000000;
+    void* const cBufferAddress = (void*)0x0000100000000000;
 
     const uint64_t cStaticBufferIdx = 0, cDynamicBufferIdx = 1;
-    const uint64_t cBufferLengths[] = { MEGABYTE_BL(64), GIGABYTE_BL(1) };
+    const uint64_t cBufferLengths[] = { MEGABYTE_BL(1), MEGABYTE_BL(1) };
     const uint64_t cBufferCount = sizeof( cBufferLengths ) / sizeof( cBufferLengths[0] );
 
     llce::memory mem( cBufferCount, &cBufferLengths[0], cBufferAddress );
@@ -108,12 +108,12 @@ int32_t main() {
                 // NOTE(JRC): We can continually write to the file if we keep the handle
                 // open as writes will continously append to the end of the file (the
                 // current location of the file pointer).
-                // saveFullFile( "out/state.dat", mem->, sizeof() );
+                llce::platform::saveFullFile( "out/state.dat", mem.buffer(), mem.length() );
             } else {
                 // TODO(JRC): Finish the recording and then start the playback.
                 // TODO(JRC): In the playback, make sure to loop once the end of the
                 // recorded input file is reached.
-                // loadFullFile( "out/state.dat", mem->, sizeof() );
+                llce::platform::loadFullFile( "out/state.dat", mem.buffer(), mem.length() );
             }
             isRecording = !isRecording;
         }
