@@ -4,7 +4,7 @@
 
 namespace llce {
 
-memory::memory( uint64_t pBlockCount, const uint64_t* pBlockLengths, void* pBlockBase ) {
+memory::memory( uint64_t pBlockCount, const uint64_t* pBlockLengths, bit8_t* pBlockBase ) {
     LLCE_ASSERT_ERROR( pBlockCount <= memory::MAX_BLOCKS,
         "Couldn't allocate memory chunk with " << pBlockCount << " blocks; " <<
         "block count has a maximum value of " << memory::MAX_BLOCKS << "." );
@@ -34,20 +34,20 @@ memory::~memory() {
 }
 
 
-void* memory::allocate( uint64_t pBufferIdx, uint64_t pAllocLength ) {
+bit8_t* memory::allocate( uint64_t pBufferIdx, uint64_t pAllocLength ) {
     LLCE_ASSERT_ERROR(
         mBlockAllocs[pBufferIdx] + pAllocLength <= mBlockLengths[pBufferIdx],
         "Cannot allocate an additional " << pAllocLength << " bytes to buffer " <<
         pBufferIdx << "; allocation puts block over " << mBlockAllocs[pBufferIdx] <<
         "/" << mBlockLengths[pBufferIdx] << " allocation capacity." );
 
-    void* allocAddress = (char8_t*)mBlockBuffers[pBufferIdx] + mBlockAllocs[pBufferIdx];
+    bit8_t* allocAddress = mBlockBuffers[pBufferIdx] + mBlockAllocs[pBufferIdx];
     mBlockAllocs[pBufferIdx] += pAllocLength;
     return allocAddress;
 }
 
 
-void* memory::buffer( uint64_t pBufferIdx ) const {
+bit8_t* memory::buffer( uint64_t pBufferIdx ) const {
     return ( pBufferIdx < mBlockCount ) ? mBlockBuffers[pBufferIdx] : mBuffer;
 }
 

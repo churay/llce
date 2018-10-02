@@ -17,7 +17,7 @@ int32_t main() {
 
     // NOTE(JRC): This base address was chosen by following the steps enumerated
     // in the 'doc/static_address.md' documentation file.
-    void* const cBufferAddress = (void*)0x0000100000000000;
+    bit8_t* const cBufferAddress = (bit8_t*)0x0000100000000000;
 
     const uint64_t cStaticBufferIdx = 0, cDynamicBufferIdx = 1;
     const uint64_t cBufferLengths[] = { MEGABYTE_BL(1), MEGABYTE_BL(1) };

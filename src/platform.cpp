@@ -14,7 +14,7 @@
 
 namespace llce {
 
-void* platform::allocBuffer( uint64_t pBufferLength, void* pBufferBase ) {
+bit8_t* platform::allocBuffer( uint64_t pBufferLength, bit8_t* pBufferBase ) {
     const int64_t cPermissionFlags = PROT_READ | PROT_WRITE;
     const int64_t cAllocFlags = MAP_ANONYMOUS | MAP_PRIVATE |
         ( (pBufferBase != nullptr) ? MAP_FIXED : 0 );
@@ -23,13 +23,10 @@ void* platform::allocBuffer( uint64_t pBufferLength, void* pBufferBase ) {
     // and thus should be cleaned up if possible.
     if( cAllocFlags & MAP_FIXED ) {
         const int64_t cPageSize = sysconf( _SC_PAGESIZE );
-
-        bool8_t* bufferStart = (bool8_t*)pBufferBase;
-        bool8_t* bufferEnd = (bool8_t*)pBufferBase + pBufferLength;
         uchar8_t mincoreBuffer = false;
 
         bool32_t isBufferOccupied = false;
-        for( bool8_t* pageIt = bufferStart; pageIt < bufferEnd; pageIt += cPageSize ) {
+        for( bit8_t* pageIt = pBufferBase; pageIt < pBufferBase + pBufferLength; pageIt += cPageSize ) {
             isBufferOccupied |= !(
                 mincore( pageIt, cPageSize, &mincoreBuffer ) == -1 &&
                 errno == ENOMEM );
@@ -40,7 +37,7 @@ void* platform::allocBuffer( uint64_t pBufferLength, void* pBufferBase ) {
             "at base address " << pBufferBase << "; memory block is preoccupied." );
     }
 
-    void* buffer = mmap(
+    bit8_t* buffer = (bit8_t*)mmap(
         pBufferBase,             // Memory Start Address
         pBufferLength,           // Allocation Length (Bytes)
         cPermissionFlags,        // Data Permission Flags (Read/Write)
@@ -48,7 +45,7 @@ void* platform::allocBuffer( uint64_t pBufferLength, void* pBufferBase ) {
         -1,                      // File Descriptor
         0 );                     // File Offset
 
-    LLCE_ASSERT_ERROR( buffer != MAP_FAILED,
+    LLCE_ASSERT_ERROR( buffer != (bit8_t*)MAP_FAILED,
         "Unable to allocate buffer of length " << pBufferLength << "; " <<
         strerror(errno) );
 
@@ -56,7 +53,7 @@ void* platform::allocBuffer( uint64_t pBufferLength, void* pBufferBase ) {
 }
 
 
-bool32_t platform::deallocBuffer( void* pBuffer, uint64_t pBufferLength ) {
+bool32_t platform::deallocBuffer( bit8_t* pBuffer, uint64_t pBufferLength ) {
     int64_t status = munmap( pBuffer, pBufferLength );
     return status == 0;
 }
@@ -92,7 +89,7 @@ int64_t platform::statModTime( const char8_t* pFilePath ) {
 }
 
 
-bool32_t platform::saveFullFile( const char8_t* pFilePath, void* pBuffer, uint64_t pBufferLength ) {
+bool32_t platform::saveFullFile( const char8_t* pFilePath, bit8_t* pBuffer, uint64_t pBufferLength ) {
     bool32_t saveSuccessful = false;
 
     FILE* file = fopen( pFilePath, "wb" );
@@ -107,7 +104,7 @@ bool32_t platform::saveFullFile( const char8_t* pFilePath, void* pBuffer, uint64
 }
 
 
-bool32_t platform::loadFullFile( const char8_t* pFilePath, void* pBuffer, uint64_t pBufferLength ) {
+bool32_t platform::loadFullFile( const char8_t* pFilePath, bit8_t* pBuffer, uint64_t pBufferLength ) {
     bool32_t saveSuccessful = false;
 
     FILE* file = fopen( pFilePath, "rb" );
