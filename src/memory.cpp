@@ -24,7 +24,7 @@ memory::memory( uint64_t pBlockCount, const uint64_t* pBlockLengths, void* pBloc
 
     mBlockBuffers[0] = mBuffer;
     for( uint64_t blockIdx = 1; blockIdx < pBlockCount; blockIdx++ ) {
-        mBlockBuffers[blockIdx] = (char*)mBlockBuffers[blockIdx-1] + mBlockLengths[blockIdx];
+        mBlockBuffers[blockIdx] = (char8_t*)mBlockBuffers[blockIdx-1] + mBlockLengths[blockIdx];
     }
 }
 
@@ -41,7 +41,7 @@ void* memory::allocate( uint64_t pBufferIdx, uint64_t pAllocLength ) {
         pBufferIdx << "; allocation puts block over " << mBlockAllocs[pBufferIdx] <<
         "/" << mBlockLengths[pBufferIdx] << " allocation capacity." );
 
-    void* allocAddress = (char*)mBlockBuffers[pBufferIdx] + mBlockAllocs[pBufferIdx];
+    void* allocAddress = (char8_t*)mBlockBuffers[pBufferIdx] + mBlockAllocs[pBufferIdx];
     mBlockAllocs[pBufferIdx] += pAllocLength;
     return allocAddress;
 }

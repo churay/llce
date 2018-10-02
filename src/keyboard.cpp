@@ -45,7 +45,7 @@ void keyboard::read( bool8_t* pBuffer ) const {
     memset( pBuffer, false, sizeof(bool8_t) * keyboard::keycode::length );
 
     if( reading() ) {
-        char nextKey;
+        char8_t nextKey;
         while( fread(&nextKey, sizeof(nextKey), 1, stdin) > 0 ) {
             if( nextKey == 0x71 ) {
                 pBuffer[keyboard::keycode::q] = true;

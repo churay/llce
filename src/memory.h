@@ -14,8 +14,6 @@ class memory {
 
     /// Constructors ///
 
-    // memory needs ; base addresses?
-
     memory( uint64_t pBlockCount, const uint64_t* pBlockLengths, void* pBlockBase = nullptr );
     ~memory();
 

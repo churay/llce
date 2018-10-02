@@ -26,7 +26,7 @@ void* platform::allocBuffer( uint64_t pBufferLength, void* pBufferBase ) {
 
         bool8_t* bufferStart = (bool8_t*)pBufferBase;
         bool8_t* bufferEnd = (bool8_t*)pBufferBase + pBufferLength;
-        unsigned char mincoreBuffer = false;
+        uchar8_t mincoreBuffer = false;
 
         bool32_t isBufferOccupied = false;
         for( bool8_t* pageIt = bufferStart; pageIt < bufferEnd; pageIt += cPageSize ) {
@@ -62,7 +62,7 @@ bool32_t platform::deallocBuffer( void* pBuffer, uint64_t pBufferLength ) {
 }
 
 
-int64_t platform::statSize( const char* pFilePath ) {
+int64_t platform::statSize( const char8_t* pFilePath ) {
     int64_t fileSize = 0;
 
     // NOTE(JRC): According to the Unix documentation, the 'off_t' type is
@@ -77,7 +77,7 @@ int64_t platform::statSize( const char* pFilePath ) {
 }
 
 
-int64_t platform::statModTime( const char* pFilePath ) {
+int64_t platform::statModTime( const char8_t* pFilePath ) {
     int64_t fileModTime = 0;
 
     // NOTE(JRC): According to the C++ documentation, the 'time_t' type is
@@ -92,7 +92,7 @@ int64_t platform::statModTime( const char* pFilePath ) {
 }
 
 
-bool32_t platform::saveFullFile( const char* pFilePath, void* pBuffer, uint64_t pBufferLength ) {
+bool32_t platform::saveFullFile( const char8_t* pFilePath, void* pBuffer, uint64_t pBufferLength ) {
     bool32_t saveSuccessful = false;
 
     FILE* file = fopen( pFilePath, "wb" );
@@ -107,7 +107,7 @@ bool32_t platform::saveFullFile( const char* pFilePath, void* pBuffer, uint64_t 
 }
 
 
-bool32_t platform::loadFullFile( const char* pFilePath, void* pBuffer, uint64_t pBufferLength ) {
+bool32_t platform::loadFullFile( const char8_t* pFilePath, void* pBuffer, uint64_t pBufferLength ) {
     bool32_t saveSuccessful = false;
 
     FILE* file = fopen( pFilePath, "rb" );
@@ -122,10 +122,10 @@ bool32_t platform::loadFullFile( const char* pFilePath, void* pBuffer, uint64_t 
 }
 
 
-bool32_t platform::waitLockFile( const char* pFilePath ) {
+bool32_t platform::waitLockFile( const char8_t* pFilePath ) {
     bool32_t waitSuccessful = false;
 
-    char lockFilePath[MAXPATH_BL] = "";
+    char8_t lockFilePath[MAXPATH_BL] = "";
     strcpy( lockFilePath, pFilePath );
     strcat( lockFilePath, ".lock" );
 
@@ -142,31 +142,31 @@ bool32_t platform::waitLockFile( const char* pFilePath ) {
 }
 
 
-bool32_t platform::searchRPath( char* pFileName ) {
+bool32_t platform::searchRPath( char8_t* pFileName ) {
     // NOTE(JRC): The contents of this function heavily reference the system
     // implementation of the '<link.h>' dependency, which defines the C data
     // structures that interface with dynamic library symbol tables.
     // TODO(JRC): Extend this solution so that it loads using 'DT_RUNPATH' and
     // '$ORIGIN' like the built-in Unix run-time loading mechanism does.
-    const char* procStringTable = nullptr;
+    const char8_t* procStringTable = nullptr;
     int32_t procRPathOffset = -1;
 
     for( const ElfW(Dyn)* dylibIter = _DYNAMIC; dylibIter->d_tag != DT_NULL; ++dylibIter ) {
         if( dylibIter->d_tag == DT_STRTAB ) {
-            procStringTable = (const char*)( dylibIter->d_un.d_val );
+            procStringTable = (const char8_t*)( dylibIter->d_un.d_val );
         } else if( dylibIter->d_tag == DT_RPATH ) {
             procRPathOffset = (int32_t)( dylibIter->d_un.d_val );
-        } 
+        }
     }
 
-    char origFileName[MAXPATH_BL];
+    char8_t origFileName[MAXPATH_BL];
     strcpy( origFileName, pFileName );
     strcpy( pFileName, "" );
 
     if( procStringTable != nullptr && procRPathOffset >= 0 ) {
-        const char* procRPath = procStringTable + procRPathOffset;
+        const char8_t* procRPath = procStringTable + procRPathOffset;
 
-        for( const char* pathIter = procRPath; *pathIter != '\0'; pathIter = strchr(pathIter, ':') ) {
+        for( const char8_t* pathIter = procRPath; *pathIter != '\0'; pathIter = strchr(pathIter, ':') ) {
             strcat( pFileName, pathIter );
             strcat( pFileName, "/" );
             strcat( pFileName, origFileName );

@@ -39,9 +39,11 @@ int32_t main() {
 
     /// Load Dynamic Shared Library ///
 
-    static auto loadLibrary = [] ( const char* pLibraryName ) {
+    // TODO(JRC): All of this dynamic library loading is Unix-specific and
+    // should ultimately be moved into the 'platform' module.
+    static auto loadLibrary = [] ( const char8_t* pLibraryName ) {
         void* libraryHandle = dlopen( pLibraryName, RTLD_NOW );
-        const char* libraryError = dlerror();
+        const char8_t* libraryError = dlerror();
 
         LLCE_ASSERT_INFO( libraryHandle != nullptr,
             "Failed to load library `" << pLibraryName << "`: " << libraryError << "." );
@@ -50,9 +52,9 @@ int32_t main() {
     };
 
     static auto loadLibrarySymbol = [] (
-            const void* pLibraryHandle, const char* pSymbolName ) {
+            const void* pLibraryHandle, const char8_t* pSymbolName ) {
         void* symbolFunction = dlsym( const_cast<void*>(pLibraryHandle), pSymbolName );
-        const char* symbolError = dlerror();
+        const char8_t* symbolError = dlerror();
 
         LLCE_ASSERT_INFO( symbolFunction != nullptr,
             "Failed to load symbol `" << pSymbolName << "`: " << symbolError << "." );
@@ -64,8 +66,8 @@ int32_t main() {
     // relative to the executable instead of the path relative to the run directory.
     // TODO(JRC): Create a function to calculate the full path of the dynamic
     // library so that it can be used easily in all platform functions.
-    const char* dylibFileName = "dylib.so";
-    char dylibFilePath[MAXPATH_BL]; {
+    const char8_t* dylibFileName = "dylib.so";
+    char8_t dylibFilePath[MAXPATH_BL]; {
         strcpy( dylibFilePath, dylibFileName );
         LLCE_ASSERT_ERROR( llce::platform::searchRPath(dylibFilePath),
             "Failed to find library " << dylibFileName << " in dynamic path." );
@@ -94,6 +96,11 @@ int32_t main() {
 
     bool32_t isRunning = true;
     llce::timer simTimer( 2.0, llce::timer::type::fps );
+
+    // TODO(JRC): The general idea is to save the game state one time, then
+    // save the input state once per frame until the recording is over.
+    // - Question: How do we exit a recording state if we always overwrite
+    //   our current input state while playing back? Merge inputs, perhaps?
 
     while( isRunning ) {
         simTimer.split();
