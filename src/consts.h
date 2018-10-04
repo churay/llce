@@ -16,6 +16,8 @@ typedef uint32_t bool32_t;
 typedef float float32_t;
 typedef double float64_t;
 
+// TODO(JRC): Abstract away the platform-specific code from this module (e.g.
+// 'exit', setting the error number, etc.).
 // TODO(JRC): Define types that have same byte length as the pointer types
 // for the current platform.
 

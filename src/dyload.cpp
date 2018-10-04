@@ -2,7 +2,10 @@
 #include <string.h>
 #include <dlfcn.h>
 
+#include <fstream>
+
 #include "dylib.h"
+
 #include "memory.h"
 #include "timer.h"
 #include "keyboard.h"
@@ -11,6 +14,7 @@
 
 typedef void (*update_f)( dylib::state*, dylib::input* );
 typedef void (*render_f)( const dylib::state*, const dylib::input* );
+typedef std::ios_base::openmode ioflag_t;
 
 int32_t main() {
     /// Initialize Application Memory/State ///
@@ -20,7 +24,7 @@ int32_t main() {
     bit8_t* const cBufferAddress = (bit8_t*)0x0000100000000000;
 
     const uint64_t cStaticBufferIdx = 0, cDynamicBufferIdx = 1;
-    const uint64_t cBufferLengths[] = { MEGABYTE_BL(1), MEGABYTE_BL(1) };
+    const uint64_t cBufferLengths[] = { KILOBYTE_BL(1), KILOBYTE_BL(1) };
     const uint64_t cBufferCount = sizeof( cBufferLengths ) / sizeof( cBufferLengths[0] );
 
     llce::memory mem( cBufferCount, &cBufferLengths[0], cBufferAddress );
@@ -29,10 +33,14 @@ int32_t main() {
         dylib::state temp;
         memcpy( state, &temp, sizeof(dylib::state) );
     }
+    dylib::input* input = (dylib::input*)mem.allocate( cStaticBufferIdx, sizeof(dylib::input) );
+
+    std::fstream recStateStream, recInputStream;
+    const char8_t* cStateFilePath = "out/state.dat", * cInputFilePath = "out/input.dat";
+    const ioflag_t cIOModeR = std::fstream::binary | std::fstream::in;
+    const ioflag_t cIOModeW = std::fstream::binary | std::fstream::out | std::fstream::trunc;
 
     /// Initialize Input State ///
-
-    dylib::input* input = (dylib::input*)mem.allocate( cStaticBufferIdx, sizeof(dylib::input) );
 
     llce::keyboard tty;
     LLCE_ASSERT_ERROR( tty.reading(), "Couldn't initialize keyboard input for process." );
@@ -93,6 +101,7 @@ int32_t main() {
     printf( "Start!\n" );
 
     bool32_t isRecording = false, isReplaying = false;
+    llce::timer recTimer( 1.0, llce::timer::type::fps );
 
     bool32_t isRunning = true;
     llce::timer simTimer( 2.0, llce::timer::type::fps );
@@ -115,12 +124,16 @@ int32_t main() {
                 // NOTE(JRC): We can continually write to the file if we keep the handle
                 // open as writes will continously append to the end of the file (the
                 // current location of the file pointer).
-                llce::platform::saveFullFile( "out/state.dat", mem.buffer(), mem.length() );
+                recStateStream.open( cStateFilePath, cIOModeW );
+                recStateStream.write( mem.buffer(), mem.length() );
+                recStateStream.close();
             } else {
                 // TODO(JRC): Finish the recording and then start the playback.
                 // TODO(JRC): In the playback, make sure to loop once the end of the
                 // recorded input file is reached.
-                llce::platform::loadFullFile( "out/state.dat", mem.buffer(), mem.length() );
+                recStateStream.open( cStateFilePath, cIOModeR );
+                recStateStream.read( mem.buffer(), mem.length() );
+                recStateStream.close();
             }
             isRecording = !isRecording;
         }
