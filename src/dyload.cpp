@@ -33,7 +33,6 @@ int32_t main() {
         dylib::state temp;
         memcpy( state, &temp, sizeof(dylib::state) );
     }
-    dylib::input* input = (dylib::input*)mem.allocate( cStaticBufferIdx, sizeof(dylib::input) );
 
     std::fstream recStateStream, recInputStream;
     const char8_t* cStateFilePath = "out/state.dat", * cInputFilePath = "out/input.dat";
@@ -41,6 +40,9 @@ int32_t main() {
     const ioflag_t cIOModeW = std::fstream::binary | std::fstream::out | std::fstream::trunc;
 
     /// Initialize Input State ///
+
+    dylib::input rawInput;
+    dylib::input* input = &rawInput;
 
     llce::keyboard tty;
     LLCE_ASSERT_ERROR( tty.reading(), "Couldn't initialize keyboard input for process." );
@@ -101,15 +103,8 @@ int32_t main() {
     printf( "Start!\n" );
 
     bool32_t isRecording = false, isReplaying = false;
-    llce::timer recTimer( 1.0, llce::timer::type::fps );
-
     bool32_t isRunning = true;
     llce::timer simTimer( 2.0, llce::timer::type::fps );
-
-    // TODO(JRC): The general idea is to save the game state one time, then
-    // save the input state once per frame until the recording is over.
-    // - Question: How do we exit a recording state if we always overwrite
-    //   our current input state while playing back? Merge inputs, perhaps?
 
     while( isRunning ) {
         simTimer.split();
@@ -119,23 +114,40 @@ int32_t main() {
             isRunning = false;
         } if( input->keys[llce::keyboard::keycode::r] ) {
             if( !isRecording ) {
-                // TODO(JRC): Start the recording by outputting all of the state at this
-                // moment and start recording the input.
-                // NOTE(JRC): We can continually write to the file if we keep the handle
-                // open as writes will continously append to the end of the file (the
-                // current location of the file pointer).
                 recStateStream.open( cStateFilePath, cIOModeW );
                 recStateStream.write( mem.buffer(), mem.length() );
                 recStateStream.close();
+
+                recInputStream.open( cInputFilePath, cIOModeW );
             } else {
-                // TODO(JRC): Finish the recording and then start the playback.
-                // TODO(JRC): In the playback, make sure to loop once the end of the
-                // recorded input file is reached.
-                recStateStream.open( cStateFilePath, cIOModeR );
-                recStateStream.read( mem.buffer(), mem.length() );
-                recStateStream.close();
+                recInputStream.close();
             }
             isRecording = !isRecording;
+        } if( input->keys[llce::keyboard::keycode::t] ) {
+            if( !isReplaying ) {
+                recStateStream.open( cStateFilePath, cIOModeR );
+                recInputStream.open( cInputFilePath, cIOModeR );
+                recInputStream.seekg( 0, std::ios_base::end );
+            } else {
+                recStateStream.close();
+                recInputStream.close();
+            }
+            isReplaying = !isReplaying;
+        }
+
+        // TODO(JRC): This is a bit weird for replaying because we allow intercepts
+        // from any key before replacing all key presses with replay data. This is
+        // good in some ways as it allows recordings to be excited, but it does
+        // open the door for weird behavior like embedded recordings.
+        if( isRecording ) {
+            recInputStream.write( (bit8_t*)input->keys, sizeof(input->keys) );
+        } if( isReplaying ) {
+            if( recInputStream.peek() == EOF || recInputStream.eof() ) {
+                recStateStream.seekg( 0 );
+                recStateStream.write( mem.buffer(), mem.length() );
+                recInputStream.seekg( 0 );
+            }
+            recInputStream.read( (bit8_t*)input->keys, sizeof(input->keys) );
         }
 
         LLCE_ASSERT_ERROR( currDylibModTime = llce::platform::statModTime(dylibFilePath),
@@ -159,6 +171,9 @@ int32_t main() {
     }
 
     printf( "\nEnd!\n" );
+
+    recStateStream.close();
+    recInputStream.close();
 
     return 0;
 }

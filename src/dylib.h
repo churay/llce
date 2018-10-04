@@ -16,7 +16,7 @@ struct state {
 
 
 struct input {
-    bool8_t keys[llce::keyboard::keycode::length] = { false, false, false, false, false };
+    bool8_t keys[llce::keyboard::keycode::length];
 };
 
 }

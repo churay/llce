@@ -11,7 +11,7 @@ class keyboard {
 
     /// Class Attributes ///
 
-    enum keycode { q, r, h, j, k, l, length };
+    enum keycode { q, r, t, h, j, k, l, length };
 
     /// Constructors ///
 

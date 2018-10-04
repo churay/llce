@@ -51,6 +51,8 @@ void keyboard::read( bool8_t* pBuffer ) const {
                 pBuffer[keyboard::keycode::q] = true;
             } else if( nextKey == 0x72 ) {
                 pBuffer[keyboard::keycode::r] = true;
+            } else if( nextKey == 0x74 ) {
+                pBuffer[keyboard::keycode::t] = true;
             } else if( nextKey == 0x68 ) {
                 pBuffer[keyboard::keycode::h] = true;
             } else if( nextKey == 0x6A ) {
