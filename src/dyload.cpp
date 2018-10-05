@@ -144,7 +144,7 @@ int32_t main() {
         } if( isReplaying ) {
             if( recInputStream.peek() == EOF || recInputStream.eof() ) {
                 recStateStream.seekg( 0 );
-                recStateStream.write( mem.buffer(), mem.length() );
+                recStateStream.read( mem.buffer(), mem.length() );
                 recInputStream.seekg( 0 );
             }
             recInputStream.read( (bit8_t*)input->keys, sizeof(input->keys) );
