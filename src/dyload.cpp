@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include <dlfcn.h>
 
 #include <fstream>
 
@@ -21,15 +20,15 @@ int32_t main() {
 
     // NOTE(JRC): This base address was chosen by following the steps enumerated
     // in the 'doc/static_address.md' documentation file.
+#ifdef LLCE_DEBUG
     bit8_t* const cBufferAddress = (bit8_t*)0x0000100000000000;
+#else
+    bit8_t* const cBufferAddress = nullptr;
+#endif
+    const uint64_t cBufferLength = KILOBYTE_BL( 1 );
+    llce::memory mem( 1, &cBufferLength, cBufferAddress );
 
-    const uint64_t cStaticBufferIdx = 0, cDynamicBufferIdx = 1;
-    const uint64_t cBufferLengths[] = { KILOBYTE_BL(1), KILOBYTE_BL(1) };
-    const uint64_t cBufferCount = sizeof( cBufferLengths ) / sizeof( cBufferLengths[0] );
-
-    llce::memory mem( cBufferCount, &cBufferLengths[0], cBufferAddress );
-
-    dylib::state* state = (dylib::state*)mem.allocate( cStaticBufferIdx, sizeof(dylib::state) ); {
+    dylib::state* state = (dylib::state*)mem.allocate( 0, sizeof(dylib::state) ); {
         dylib::state temp;
         memcpy( state, &temp, sizeof(dylib::state) );
     }
@@ -49,29 +48,6 @@ int32_t main() {
 
     /// Load Dynamic Shared Library ///
 
-    // TODO(JRC): All of this dynamic library loading is Unix-specific and
-    // should ultimately be moved into the 'platform' module.
-    static auto loadLibrary = [] ( const char8_t* pLibraryName ) {
-        void* libraryHandle = dlopen( pLibraryName, RTLD_NOW );
-        const char8_t* libraryError = dlerror();
-
-        LLCE_ASSERT_INFO( libraryHandle != nullptr,
-            "Failed to load library `" << pLibraryName << "`: " << libraryError << "." );
-
-        return libraryHandle;
-    };
-
-    static auto loadLibrarySymbol = [] (
-            const void* pLibraryHandle, const char8_t* pSymbolName ) {
-        void* symbolFunction = dlsym( const_cast<void*>(pLibraryHandle), pSymbolName );
-        const char8_t* symbolError = dlerror();
-
-        LLCE_ASSERT_INFO( symbolFunction != nullptr,
-            "Failed to load symbol `" << pSymbolName << "`: " << symbolError << "." );
-
-        return symbolFunction;
-    };
-
     // TODO(JRC): Fix the calls to the 'stat' function so that they use the path
     // relative to the executable instead of the path relative to the run directory.
     // TODO(JRC): Create a function to calculate the full path of the dynamic
@@ -79,13 +55,13 @@ int32_t main() {
     const char8_t* dylibFileName = "dylib.so";
     char8_t dylibFilePath[MAXPATH_BL]; {
         strcpy( dylibFilePath, dylibFileName );
-        LLCE_ASSERT_ERROR( llce::platform::searchRPath(dylibFilePath),
+        LLCE_ASSERT_ERROR( llce::platform::libSearchRPath(dylibFilePath),
             "Failed to find library " << dylibFileName << " in dynamic path." );
     }
 
-    void* dylibHandle = loadLibrary( dylibFileName );
-    void* updateSymbol = loadLibrarySymbol( dylibHandle, "update" );
-    void* renderSymbol = loadLibrarySymbol( dylibHandle, "render" );
+    void* dylibHandle = llce::platform::dllLoadHandle( dylibFileName );
+    void* updateSymbol = llce::platform::dllLoadSymbol( dylibHandle, "update" );
+    void* renderSymbol = llce::platform::dllLoadSymbol( dylibHandle, "render" );
     LLCE_ASSERT_ERROR(
         dylibHandle != nullptr && updateSymbol != nullptr && renderSymbol != nullptr,
         "Couldn't load library `" << dylibFileName << "` symbols on initialize." );
@@ -95,7 +71,7 @@ int32_t main() {
 
     int64_t prevDylibModTime, currDylibModTime;
     LLCE_ASSERT_ERROR(
-        prevDylibModTime = currDylibModTime = llce::platform::statModTime(dylibFilePath),
+        prevDylibModTime = currDylibModTime = llce::platform::fileStatModTime(dylibFilePath),
         "Couldn't load library `" << dylibFileName << "` stat data on initialize." );
 
     /// Update Application ///
@@ -150,15 +126,20 @@ int32_t main() {
             recInputStream.read( (bit8_t*)input->keys, sizeof(input->keys) );
         }
 
-        LLCE_ASSERT_ERROR( currDylibModTime = llce::platform::statModTime(dylibFilePath),
+        LLCE_ASSERT_ERROR(
+            currDylibModTime = llce::platform::fileStatModTime(dylibFilePath),
             "Couldn't load library `" << dylibFileName << "` stat data on step." );
         if( currDylibModTime != prevDylibModTime ) {
-            llce::platform::waitLockFile( dylibFilePath );
+            llce::platform::fileWaitLock( dylibFilePath );
 
-            dlclose( dylibHandle );
-            dylibHandle = loadLibrary( dylibFileName );
-            updateFunction = (update_f)loadLibrarySymbol( dylibHandle, "update" );
-            renderFunction = (render_f)loadLibrarySymbol( dylibHandle, "render" );
+            llce::platform::dllUnloadHandle( dylibHandle, dylibFileName );
+            dylibHandle = llce::platform::dllLoadHandle( dylibFileName );
+            updateFunction = (update_f)llce::platform::dllLoadSymbol( dylibHandle, "update" );
+            renderFunction = (render_f)llce::platform::dllLoadSymbol( dylibHandle, "render" );
+            LLCE_ASSERT_ERROR(
+                dylibHandle != nullptr && updateFunction != nullptr && renderFunction != nullptr,
+                "Couldn't load library `" << dylibFileName << "` symbols at " <<
+                "simulation time " << simTimer.tt() << "." );
 
             prevDylibModTime = currDylibModTime;
         }

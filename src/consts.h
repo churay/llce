@@ -38,7 +38,7 @@ typedef double float64_t;
 // instead of 'std::cerr' functionality.
 // NOTE(JRC): Code inspired by Stack Overflow response:
 // https://stackoverflow.com/a/3767883.
-#ifdef DEBUG
+#ifdef LLCE_DEBUG
 #define LLCE_ASSERT_INFO(condition, message) \
     do { \
         if (! (condition)) { \
@@ -49,7 +49,7 @@ typedef double float64_t;
 #define LLCE_ASSERT_INFO(condition, message) do { } while(false)
 #endif
 
-#ifdef DEBUG
+#ifdef LLCE_DEBUG
 #define LLCE_ASSERT_DEBUG(condition, message) \
     do { \
         if (! (condition)) { \

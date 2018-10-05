@@ -1,7 +1,8 @@
 ### Compilation/Linking Tools/Flags ###
 
 CXX = clang++
-CXX_FLAGS = -std=c++1y -Wall -fno-exceptions -g -O0 -DDEBUG
+CXX_FLAGS = -std=c++1y -Wall -fno-exceptions -g3 -O0 -DLLCE_DEBUG
+# CXX_FLAGS = -std=c++1y -Wall -fno-exceptions -g0 -O3
 CXX_INCLS = -I$(SRC_DIR) -Wl,-rpath=$(BIN_DIR)
 
 CXX_LIB_FLAGS = `pkg-config --cflags sdl2`

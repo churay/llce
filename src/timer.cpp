@@ -7,6 +7,10 @@
 namespace llce {
 
 timer::timer( float64_t pRatio, timer::type pType ) {
+    LLCE_ASSERT_DEBUG( pRatio > 0.0,
+        "Couldn't create timer with invalid fps/spf ratio of " << pRatio << "; "
+        "this ratio value must be positive." );
+
     SecDuration frameDuration( (pType == timer::type::spf) ? pRatio : 1.0 / pRatio );
     mFrameDuration = std::chrono::duration_cast<ClockDuration>( frameDuration );
 

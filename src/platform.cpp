@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 
+#include <dlfcn.h>
 #include <elf.h>
 #include <link.h>
 
@@ -32,9 +33,10 @@ bit8_t* platform::allocBuffer( uint64_t pBufferLength, bit8_t* pBufferBase ) {
                 errno == ENOMEM );
         }
 
-        LLCE_ASSERT_ERROR( !isBufferOccupied,
-            "Unable to allocate buffer of length " << pBufferLength << " " <<
-            "at base address " << pBufferBase << "; memory block is preoccupied." );
+        LLCE_ASSERT_INFO( !isBufferOccupied,
+            "Allocation of buffer of length " << pBufferLength << " " <<
+            "at base address " << pBufferBase << " will cause eviction of one "
+            "or more existing memory blocks." );
     }
 
     bit8_t* buffer = (bit8_t*)mmap(
@@ -45,9 +47,9 @@ bit8_t* platform::allocBuffer( uint64_t pBufferLength, bit8_t* pBufferBase ) {
         -1,                      // File Descriptor
         0 );                     // File Offset
 
-    LLCE_ASSERT_ERROR( buffer != (bit8_t*)MAP_FAILED,
-        "Unable to allocate buffer of length " << pBufferLength << "; " <<
-        strerror(errno) );
+    LLCE_ASSERT_INFO( buffer != (bit8_t*)MAP_FAILED,
+        "Unable to allocate buffer of length " << pBufferLength << " " <<
+        "at base address " << pBufferBase << "; " << strerror(errno) );
 
     return buffer;
 }
@@ -55,11 +57,16 @@ bit8_t* platform::allocBuffer( uint64_t pBufferLength, bit8_t* pBufferBase ) {
 
 bool32_t platform::deallocBuffer( bit8_t* pBuffer, uint64_t pBufferLength ) {
     int64_t status = munmap( pBuffer, pBufferLength );
+
+    LLCE_ASSERT_INFO( status == 0,
+        "Deallocation of buffer of length " << pBufferLength << " " <<
+        "at base address " << pBuffer << " failed; possible memory corruption." );
+
     return status == 0;
 }
 
 
-int64_t platform::statSize( const char8_t* pFilePath ) {
+int64_t platform::fileStatSize( const char8_t* pFilePath ) {
     int64_t fileSize = 0;
 
     // NOTE(JRC): According to the Unix documentation, the 'off_t' type is
@@ -70,11 +77,15 @@ int64_t platform::statSize( const char8_t* pFilePath ) {
         fileSize = static_cast<int64_t>( fileStatus.st_size );
     }
 
+    LLCE_ASSERT_INFO( fileSize > 0,
+        "Failed to properly read size of file at path " << pFilePath << "; " <<
+        strerror(errno) );
+
     return fileSize;
 }
 
 
-int64_t platform::statModTime( const char8_t* pFilePath ) {
+int64_t platform::fileStatModTime( const char8_t* pFilePath ) {
     int64_t fileModTime = 0;
 
     // NOTE(JRC): According to the C++ documentation, the 'time_t' type is
@@ -85,41 +96,15 @@ int64_t platform::statModTime( const char8_t* pFilePath ) {
         fileModTime = static_cast<int64_t>( fileStatus.st_mtime );
     }
 
+    LLCE_ASSERT_INFO( fileModTime > 0,
+        "Failed to properly read mod time of file at path " << pFilePath << "; " <<
+        strerror(errno) );
+
     return fileModTime;
 }
 
 
-bool32_t platform::saveFullFile( const char8_t* pFilePath, bit8_t* pBuffer, uint64_t pBufferLength ) {
-    bool32_t saveSuccessful = false;
-
-    FILE* file = fopen( pFilePath, "wb" );
-    if( file != nullptr ) {
-        if( fwrite(pBuffer, pBufferLength, 1, file) != 0 ) {
-            saveSuccessful = true;
-        }
-        fclose( file );
-    }
-
-    return saveSuccessful;
-}
-
-
-bool32_t platform::loadFullFile( const char8_t* pFilePath, bit8_t* pBuffer, uint64_t pBufferLength ) {
-    bool32_t saveSuccessful = false;
-
-    FILE* file = fopen( pFilePath, "rb" );
-    if( file != nullptr ) {
-        if( fread(pBuffer, pBufferLength, 1, file) != 0 ) {
-            saveSuccessful = true;
-        }
-        fclose( file );
-    }
-
-    return saveSuccessful;
-}
-
-
-bool32_t platform::waitLockFile( const char8_t* pFilePath ) {
+bool32_t platform::fileWaitLock( const char8_t* pFilePath ) {
     bool32_t waitSuccessful = false;
 
     char8_t lockFilePath[MAXPATH_BL] = "";
@@ -135,11 +120,48 @@ bool32_t platform::waitLockFile( const char8_t* pFilePath ) {
         waitSuccessful &= !close( lockFileHandle );
     }
 
+    LLCE_ASSERT_INFO( waitSuccessful,
+        "Failed to properly wait for file at path " << pFilePath << "; " <<
+        strerror(errno) );
+
     return waitSuccessful;
 }
 
 
-bool32_t platform::searchRPath( char8_t* pFileName ) {
+void* platform::dllLoadHandle( const char8_t* pDLLPath ) {
+    void* libraryHandle = dlopen( pDLLPath, RTLD_NOW );
+    const char8_t* libraryError = dlerror();
+
+    LLCE_ASSERT_INFO( libraryHandle != nullptr,
+        "Failed to load library `" << pDLLPath << "`: " << libraryError );
+
+    return libraryHandle;
+}
+
+
+bool32_t platform::dllUnloadHandle( void* pDLLHandle, const char8_t* pDLLPath ) {
+    int64_t status = dlclose( pDLLHandle );
+    const char8_t* libraryError = dlerror();
+
+    LLCE_ASSERT_INFO( status == 0,
+        "Failed to unload library `" << pDLLPath << "`; " << libraryError );
+
+    return status == 0;
+}
+
+
+void* platform::dllLoadSymbol( void* pDLLHandle, const char8_t* pDLLSymbol ) {
+    void* symbolFunction = dlsym( const_cast<void*>(pDLLHandle), pDLLSymbol );
+    const char8_t* symbolError = dlerror();
+
+    LLCE_ASSERT_INFO( symbolFunction != nullptr,
+        "Failed to load symbol `" << pDLLSymbol << "`: " << symbolError );
+
+    return symbolFunction;
+}
+
+
+bool32_t platform::libSearchRPath( char8_t* pFileName ) {
     // NOTE(JRC): The contents of this function heavily reference the system
     // implementation of the '<link.h>' dependency, which defines the C data
     // structures that interface with dynamic library symbol tables.
