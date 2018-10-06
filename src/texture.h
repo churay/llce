@@ -3,6 +3,8 @@
 
 #include <SDL2/SDL.h>
 
+#include "consts.h"
+
 namespace llce {
 
 class texture {
@@ -10,10 +12,10 @@ class texture {
 
     /// Constructors ///
 
-    texture( SDL_Renderer* pHost, size_t pWidth, size_t pHeight );
+    texture( SDL_Renderer* pHost, int32_t pWidth, int32_t pHeight );
     ~texture();
 
-    int update();
+    int32_t update();
 
     /// Class Fields ///
 
@@ -21,8 +23,8 @@ class texture {
     SDL_Texture* mHandle;
     uint32_t* mData;
 
-    size_t mWidth, mHeight;
-    size_t mBytesPerPixel;
+    int32_t mWidth, mHeight;
+    int32_t mBytesPerPixel;
 };
 
 }

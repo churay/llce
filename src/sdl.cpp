@@ -1,21 +1,19 @@
 #include <iostream>
-#include <sys/mman.h>
 #include <SDL2/SDL.h>
 
+#include "consts.h"
 #include "timer.h"
 #include "texture.h"
 
 int main() {
-    // Initialize SDL //
+    /// Initialize SDL ///
 
-    if( SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0 ) {
-        std::cout << "SDL failed to initialized; " << SDL_GetError() << std::endl;
-        return 1;
-    }
+    LLCE_ASSERT_ERROR( SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) >= 0,
+        "SDL failed to initialize; " << SDL_GetError() );
 
-    // Create an SDL Window //
+    /// Create an SDL Window ///
 
-    const size_t cWindowWidth = 640, cWindowHeight = 480;
+    const int32_t cWindowWidth = 640, cWindowHeight = 480;
 
     SDL_Window* window = SDL_CreateWindow(
         "Loop-Live Code Editing",       // Window Title
@@ -24,18 +22,17 @@ int main() {
         cWindowWidth,                   // Window Width
         cWindowHeight,                  // Window Height
         SDL_WINDOW_RESIZABLE );         // Window Initialization Flags
-
-    if( window == NULL ) {
-        std::cout << "SDL failed to create window; " << SDL_GetError() << std::endl;
-        return 1;
-    }
+    LLCE_ASSERT_ERROR( window != nullptr,
+        "SDL failed to create window instance; " << SDL_GetError() );
 
     SDL_Renderer* renderer = SDL_CreateRenderer( window, -1, 0 );
+    LLCE_ASSERT_ERROR( renderer != nullptr,
+        "SDL failed to create window renderer; " << SDL_GetError() );
 
-    // Create and Load Texture //
+    /// Create and Load Texture ///
 
     llce::texture* texture = new llce::texture( renderer, cWindowWidth, cWindowHeight );
-    auto loadTexture = [ &texture ] ( const size_t xOff, const size_t yOff ) {
+    auto loadTexture = [ &texture ] ( const int32_t xOff, const int32_t yOff ) {
         uint32_t* textureData = texture->mData;
         for( int y = 0; y < texture->mHeight; y++ ) {
             for( int x = 0; x < texture->mWidth; x++ ) {
@@ -51,15 +48,15 @@ int main() {
         return texture->update();
     };
 
-    // Update and Render Application //
+    /// Update/Render Loop ///
 
-    size_t xOffset = 0, yOffset = 0;
+    int32_t xOffset = 0, yOffset = 0;
 
-    llce::timer t( 60, llce::timer::type::fps );
+    bool32_t isRunning = true, doRender = false;
+    llce::timer simTimer( 60, llce::timer::type::fps );
 
-    bool isRunning = true, doRender = false;
     while( isRunning ) {
-        t.split();
+        simTimer.split();
 
         SDL_Event event;
         while( SDL_PollEvent(&event) ) {
@@ -115,10 +112,10 @@ int main() {
             SDL_RenderPresent( renderer );
         }
 
-        t.split( true );
+        simTimer.split( true );
     }
 
-    // Clean Up SDL Assets and Exit //
+    /// Clean Up + Exit ///
 
     SDL_DestroyWindow( window );
     SDL_Quit();

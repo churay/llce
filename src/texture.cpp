@@ -5,7 +5,7 @@
 
 namespace llce {
 
-texture::texture( SDL_Renderer* pHost, size_t pWidth, size_t pHeight ) {
+texture::texture( SDL_Renderer* pHost, int32_t pWidth, int32_t pHeight ) {
     mHost = pHost;
     mWidth = pWidth;
     mHeight = pHeight;
@@ -32,7 +32,7 @@ texture::~texture() {
 }
 
 
-int texture::update() {
+int32_t texture::update() {
     return SDL_UpdateTexture( mHandle, nullptr,
         (void*)mData, sizeof(uint32_t)*mWidth );
 }
