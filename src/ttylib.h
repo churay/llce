@@ -1,10 +1,10 @@
-#ifndef LLCE_DYLIB_H
-#define LLCE_DYLIB_H
+#ifndef LLCE_TTYLIB_H
+#define LLCE_TTYLIB_H
 
 #include "keyboard.h"
 #include "consts.h"
 
-namespace dylib {
+namespace ttylib {
 
 struct state {
     const uint8_t lineLength = 5;

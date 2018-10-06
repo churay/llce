@@ -3,7 +3,7 @@
 
 #include <fstream>
 
-#include "dylib.h"
+#include "ttylib.h"
 
 #include "memory.h"
 #include "timer.h"
@@ -11,8 +11,8 @@
 #include "platform.h"
 #include "consts.h"
 
-typedef void (*update_f)( dylib::state*, dylib::input* );
-typedef void (*render_f)( const dylib::state*, const dylib::input* );
+typedef void (*update_f)( ttylib::state*, ttylib::input* );
+typedef void (*render_f)( const ttylib::state*, const ttylib::input* );
 typedef std::ios_base::openmode ioflag_t;
 
 int32_t main() {
@@ -28,9 +28,9 @@ int32_t main() {
     const uint64_t cBufferLength = KILOBYTE_BL( 1 );
     llce::memory mem( 1, &cBufferLength, cBufferAddress );
 
-    dylib::state* state = (dylib::state*)mem.allocate( 0, sizeof(dylib::state) ); {
-        dylib::state temp;
-        memcpy( state, &temp, sizeof(dylib::state) );
+    ttylib::state* state = (ttylib::state*)mem.allocate( 0, sizeof(ttylib::state) ); {
+        ttylib::state temp;
+        memcpy( state, &temp, sizeof(ttylib::state) );
     }
 
     std::fstream recStateStream, recInputStream;
@@ -40,8 +40,8 @@ int32_t main() {
 
     /// Initialize Input State ///
 
-    dylib::input rawInput;
-    dylib::input* input = &rawInput;
+    ttylib::input rawInput;
+    ttylib::input* input = &rawInput;
 
     llce::keyboard tty;
     LLCE_ASSERT_ERROR( tty.reading(), "Couldn't initialize keyboard input for process." );
@@ -52,27 +52,27 @@ int32_t main() {
     // relative to the executable instead of the path relative to the run directory.
     // TODO(JRC): Create a function to calculate the full path of the dynamic
     // library so that it can be used easily in all platform functions.
-    const char8_t* dylibFileName = "dylib.so";
-    char8_t dylibFilePath[MAXPATH_BL]; {
-        strcpy( dylibFilePath, dylibFileName );
-        LLCE_ASSERT_ERROR( llce::platform::libSearchRPath(dylibFilePath),
-            "Failed to find library " << dylibFileName << " in dynamic path." );
+    const char8_t* ttylibFileName = "ttylib.so";
+    char8_t ttylibFilePath[MAXPATH_BL]; {
+        strcpy( ttylibFilePath, ttylibFileName );
+        LLCE_ASSERT_ERROR( llce::platform::libSearchRPath(ttylibFilePath),
+            "Failed to find library " << ttylibFileName << " in dynamic path." );
     }
 
-    void* dylibHandle = llce::platform::dllLoadHandle( dylibFileName );
-    void* updateSymbol = llce::platform::dllLoadSymbol( dylibHandle, "update" );
-    void* renderSymbol = llce::platform::dllLoadSymbol( dylibHandle, "render" );
+    void* ttylibHandle = llce::platform::dllLoadHandle( ttylibFileName );
+    void* updateSymbol = llce::platform::dllLoadSymbol( ttylibHandle, "update" );
+    void* renderSymbol = llce::platform::dllLoadSymbol( ttylibHandle, "render" );
     LLCE_ASSERT_ERROR(
-        dylibHandle != nullptr && updateSymbol != nullptr && renderSymbol != nullptr,
-        "Couldn't load library `" << dylibFileName << "` symbols on initialize." );
+        ttylibHandle != nullptr && updateSymbol != nullptr && renderSymbol != nullptr,
+        "Couldn't load library `" << ttylibFileName << "` symbols on initialize." );
 
     update_f updateFunction = (update_f)updateSymbol;
     render_f renderFunction = (render_f)renderSymbol;
 
     int64_t prevDylibModTime, currDylibModTime;
     LLCE_ASSERT_ERROR(
-        prevDylibModTime = currDylibModTime = llce::platform::fileStatModTime(dylibFilePath),
-        "Couldn't load library `" << dylibFileName << "` stat data on initialize." );
+        prevDylibModTime = currDylibModTime = llce::platform::fileStatModTime(ttylibFilePath),
+        "Couldn't load library `" << ttylibFileName << "` stat data on initialize." );
 
     /// Update Application ///
 
@@ -127,18 +127,18 @@ int32_t main() {
         }
 
         LLCE_ASSERT_ERROR(
-            currDylibModTime = llce::platform::fileStatModTime(dylibFilePath),
-            "Couldn't load library `" << dylibFileName << "` stat data on step." );
+            currDylibModTime = llce::platform::fileStatModTime(ttylibFilePath),
+            "Couldn't load library `" << ttylibFileName << "` stat data on step." );
         if( currDylibModTime != prevDylibModTime ) {
-            llce::platform::fileWaitLock( dylibFilePath );
+            llce::platform::fileWaitLock( ttylibFilePath );
 
-            llce::platform::dllUnloadHandle( dylibHandle, dylibFileName );
-            dylibHandle = llce::platform::dllLoadHandle( dylibFileName );
-            updateFunction = (update_f)llce::platform::dllLoadSymbol( dylibHandle, "update" );
-            renderFunction = (render_f)llce::platform::dllLoadSymbol( dylibHandle, "render" );
+            llce::platform::dllUnloadHandle( ttylibHandle, ttylibFileName );
+            ttylibHandle = llce::platform::dllLoadHandle( ttylibFileName );
+            updateFunction = (update_f)llce::platform::dllLoadSymbol( ttylibHandle, "update" );
+            renderFunction = (render_f)llce::platform::dllLoadSymbol( ttylibHandle, "render" );
             LLCE_ASSERT_ERROR(
-                dylibHandle != nullptr && updateFunction != nullptr && renderFunction != nullptr,
-                "Couldn't load library `" << dylibFileName << "` symbols at " <<
+                ttylibHandle != nullptr && updateFunction != nullptr && renderFunction != nullptr,
+                "Couldn't load library `" << ttylibFileName << "` symbols at " <<
                 "simulation time " << simTimer.tt() << "." );
 
             prevDylibModTime = currDylibModTime;

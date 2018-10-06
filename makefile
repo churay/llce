@@ -17,11 +17,11 @@ OUT_DIR = $(PROJ_DIR)/out
 ETC_DIR = $(PROJ_DIR)/etc
 SRC_DIR = $(PROJ_DIR)/src
 
-PROJ_EXE = $(BIN_DIR)/llce
-PROJ_MAIN = $(SRC_DIR)/llce.cpp
+PROJ_EXE = $(BIN_DIR)/sdl
+PROJ_MAIN = $(SRC_DIR)/sdl.cpp
 
-EX_EXE = $(BIN_DIR)/dyload
-EX_MAIN = $(SRC_DIR)/dyload.cpp
+EX_EXE = $(BIN_DIR)/tty
+EX_MAIN = $(SRC_DIR)/tty.cpp
 
 ### Project Functions ###
 
@@ -36,12 +36,12 @@ lock_command = touch $(1).lock && flock -x -w 1 $(1).lock -c $(2) && rm $(1).loc
 
 all : $(PROJ_EXE)
 
-llce : $(PROJ_EXE)
+sdl : $(PROJ_EXE)
 $(PROJ_EXE) : $(PROJ_MAIN) $(SRC_DIR)/texture.cpp $(SRC_DIR)/timer.cpp | $(BIN_DIR) $(OUT_DIR)
 	$(call lock_command,$@,'$(CXX) $(CXX_FLAGS) $(CXX_LIB_FLAGS) $(CXX_INCLS) $^ -o $@ $(CXX_LIB_INCLS)')
 
-dyload : $(EX_EXE)
-$(EX_EXE) : $(EX_MAIN) $(BIN_DIR)/platform.o $(BIN_DIR)/keyboard.o $(BIN_DIR)/timer.o $(BIN_DIR)/memory.o $(BIN_DIR)/dylib.so | $(BIN_DIR) $(OUT_DIR)
+tty : $(EX_EXE)
+$(EX_EXE) : $(EX_MAIN) $(BIN_DIR)/platform.o $(BIN_DIR)/keyboard.o $(BIN_DIR)/timer.o $(BIN_DIR)/memory.o $(BIN_DIR)/ttylib.so | $(BIN_DIR) $(OUT_DIR)
 	$(call lock_command,$@,'$(CXX) $(CXX_FLAGS) -ldl $(CXX_INCLS) $(filter-out %.so,$^) -o $@')
 
 $(BIN_DIR)/%.so : $(SRC_DIR)/%.cpp $(SRC_DIR)/%.h
