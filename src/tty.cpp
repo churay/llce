@@ -34,7 +34,7 @@ int32_t main() {
     }
 
     std::fstream recStateStream, recInputStream;
-    const char8_t* cStateFilePath = "out/state.dat", * cInputFilePath = "out/input.dat";
+    const char8_t* cStateFilePath = "out/tty_state.dat", * cInputFilePath = "out/tty_input.dat";
     const ioflag_t cIOModeR = std::fstream::binary | std::fstream::in;
     const ioflag_t cIOModeW = std::fstream::binary | std::fstream::out | std::fstream::trunc;
 

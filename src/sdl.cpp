@@ -1,20 +1,21 @@
 #include <SDL2/SDL.h>
 
+#include <cstring>
 #include <iostream>
 #include <fstream>
 
 #include "sdllib.h"
 
 #include "timer.h"
-#include "texture.h"
+#include "memory.h"
+#include "platform.h"
 #include "consts.h"
 
 typedef void (*update_f)( sdllib::state*, sdllib::input* );
-typedef void (*render_f)( const sdllib::state*, const sdllib::input* );
+typedef void (*render_f)( SDL_Renderer*, const sdllib::state*, const sdllib::input* );
 typedef std::ios_base::openmode ioflag_t;
 
 int main() {
-    /*
     /// Initialize Application Memory/State ///
 
     // NOTE(JRC): This base address was chosen by following the steps enumerated
@@ -24,17 +25,25 @@ int main() {
 #else
     bit8_t* const cBufferAddress = nullptr;
 #endif
-    // multiple buffers; one for state data, one for graphics data
-    const uint64_t cBufferLength = MEGABYTE_BL( 1 );
-    llce::memory mem( 1, &cBufferLength, cBufferAddress );
+    const uint64_t cStateBufferIdx = 0, cGraphicsBufferIdx = 1;
+    const uint64_t cBufferLengths[] = { MEGABYTE_BL(1), MEGABYTE_BL(32) };
+    const uint64_t cBufferCount = sizeof( cBufferLengths ) / sizeof( cBufferLengths[0] );
+    llce::memory mem( cBufferCount, &cBufferLengths[0], cBufferAddress );
 
-    sdllib::state* state = (sdllib::state*)mem.allocate( 0, sizeof(sdllib::state) ); {
+    const int32_t cWindowWidth = 640, cWindowHeight = 480;
+    sdllib::state* state = (sdllib::state*)mem.allocate( cStateBufferIdx, sizeof(sdllib::state) ); {
         sdllib::state temp;
         memcpy( state, &temp, sizeof(sdllib::state) );
+
+        state->texData = (uint32_t*)mem.allocate( cGraphicsBufferIdx,
+            sizeof(uint32_t) * cWindowWidth * cWindowHeight );
+        state->texBox[2] = cWindowWidth;
+        state->texBox[3] = cWindowHeight;
+        state->updated = true;
     }
 
     std::fstream recStateStream, recInputStream;
-    const char8_t* cStateFilePath = "out/state.dat", * cInputFilePath = "out/input.dat";
+    const char8_t* cStateFilePath = "out/sdl_state.dat", * cInputFilePath = "out/sdl_input.dat";
     const ioflag_t cIOModeR = std::fstream::binary | std::fstream::in;
     const ioflag_t cIOModeW = std::fstream::binary | std::fstream::out | std::fstream::trunc;
 
@@ -42,15 +51,36 @@ int main() {
 
     sdllib::input rawInput;
     sdllib::input* input = &rawInput;
-    */
 
     LLCE_ASSERT_ERROR(
         SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) >= 0,
         "SDL failed to initialize; " << SDL_GetError() );
 
-    /// Create an SDL Window ///
+    /// Load Dynamic Shared Library ///
 
-    const int32_t cWindowWidth = 640, cWindowHeight = 480;
+    const char8_t* sdllibFileName = "sdllib.so";
+    char8_t sdllibFilePath[MAXPATH_BL]; {
+        strcpy( sdllibFilePath, sdllibFileName );
+        LLCE_ASSERT_ERROR( llce::platform::libSearchRPath(sdllibFilePath),
+            "Failed to find library " << sdllibFileName << " in dynamic path." );
+    }
+
+    void* sdllibHandle = llce::platform::dllLoadHandle( sdllibFileName );
+    void* updateSymbol = llce::platform::dllLoadSymbol( sdllibHandle, "update" );
+    void* renderSymbol = llce::platform::dllLoadSymbol( sdllibHandle, "render" );
+    LLCE_ASSERT_ERROR(
+        sdllibHandle != nullptr && updateSymbol != nullptr && renderSymbol != nullptr,
+        "Couldn't load library `" << sdllibFileName << "` symbols on initialize." );
+
+    update_f updateFunction = (update_f)updateSymbol;
+    render_f renderFunction = (render_f)renderSymbol;
+
+    int64_t prevDylibModTime, currDylibModTime;
+    LLCE_ASSERT_ERROR(
+        prevDylibModTime = currDylibModTime = llce::platform::fileStatModTime(sdllibFilePath),
+        "Couldn't load library `" << sdllibFileName << "` stat data on initialize." );
+
+    /// Create an SDL Window ///
 
     SDL_Window* window = SDL_CreateWindow(
         "Loop-Live Code Editing",       // Window Title
@@ -66,34 +96,27 @@ int main() {
     LLCE_ASSERT_ERROR( renderer != nullptr,
         "SDL failed to create window renderer; " << SDL_GetError() );
 
-    /// Create and Load Texture ///
-
-    llce::texture* texture = new llce::texture( renderer, cWindowWidth, cWindowHeight );
-    auto loadTexture = [ &texture ] ( const int32_t xOff, const int32_t yOff ) {
-        uint32_t* textureData = texture->mData;
-        for( int y = 0; y < texture->mHeight; y++ ) {
-            for( int x = 0; x < texture->mWidth; x++ ) {
-                int i = x + y * texture->mWidth;
-                textureData[i] = 0;
-                textureData[i] |= (uint8_t)( 0x00 ) << 24;    // red
-                textureData[i] |= (uint8_t)( y+yOff ) << 16;  // green
-                textureData[i] |= (uint8_t)( x+xOff ) << 8;   // blue
-                textureData[i] |= (uint8_t)( 0xFF ) << 0;     // alpha
-            }
-        }
-
-        return texture->update();
-    };
+    // TODO(JRC): There isn't any guarantee that the texture handle will be
+    // at the same address between instantiations of the application, so this
+    // won't always work. This should really be fixed through a local texture
+    // manager or something of that ilk.
+    state->texHandle = (void*)SDL_CreateTexture(
+        renderer,                            // Host Renderer
+        SDL_PIXELFORMAT_RGBA8888,            // Pixel Format (RGBA, 8 bits each)
+        SDL_TEXTUREACCESS_STREAMING,         // Texture Type (Streaming)
+        state->texBox[2],                    // Texture Width
+        state->texBox[3] );                  // Texture Height
 
     /// Update/Render Loop ///
-
-    int32_t xOffset = 0, yOffset = 0;
 
     bool32_t isRunning = true, doRender = false;
     llce::timer simTimer( 60, llce::timer::type::fps );
 
     while( isRunning ) {
         simTimer.split();
+
+        const uint8_t* keyboardState = SDL_GetKeyboardState( nullptr );
+        std::memcpy( input->keys, keyboardState, sizeof(input->keys) );
 
         SDL_Event event;
         while( SDL_PollEvent(&event) ) {
@@ -103,56 +126,35 @@ int main() {
                    event.window.event == SDL_WINDOWEVENT_RESIZED ||
                    event.window.event == SDL_WINDOWEVENT_EXPOSED) ) {
                 doRender = true;
-            }
-            // NOTE(JRC): Implement the following code in order to detect
-            // when a key is pressed but not held.
-            /*
             } else if( event.type == SDL_KEYDOWN ) {
+                // NOTE(JRC): The keys processed here are those that are pressed
+                // but not held. This type of processing is good for one-time
+                // events (e.g. recording, replaying, etc.).
                 SDL_Keycode pressedKey = event.key.keysym.sym;
                 if( pressedKey == SDLK_q ) {
                     isRunning = false;
+                } else if( pressedKey == SDLK_r ) {
+                    // TODO(JRC): Start recording.
+                } else if( pressedKey == SDLK_t ) {
+                    // TODO(JRC): Start replaying.
                 }
             }
-            */
         }
 
-        // NOTE(JRC): The movement numbers seem inverted because the values
-        // being changed are the offsets for the underlying texture.  By
-        // doing a positive offset in Y for example, we offset the texture
-        // downward on the screen, giving the appearance of the window
-        // "camera" going upwards.
-        const uint8_t* keyboardState = SDL_GetKeyboardState( nullptr );
-        if( keyboardState[SDL_SCANCODE_Q] ) {
-            isRunning = false;
-        } if( keyboardState[SDL_SCANCODE_W] ) {
-            yOffset += 1;
-            doRender = true;
-        } if( keyboardState[SDL_SCANCODE_S] ) {
-            yOffset -= 1;
-            doRender = true;
-        } if( keyboardState[SDL_SCANCODE_A] ) {
-            xOffset += 1;
-            doRender = true;
-        } if( keyboardState[SDL_SCANCODE_D] ) {
-            xOffset -= 1;
-            doRender = true;
-        }
+        // TODO(JRC): Replaying, recording, llce behavior.
 
-        if( doRender ) {
-            if( loadTexture(xOffset, yOffset) != 0 ) {
-                std::cout << "SDL failed to load texture." << std::endl;
-                isRunning = false;
-            }
-
-            SDL_RenderClear( renderer );
-            SDL_RenderCopy( renderer, texture->mHandle, nullptr, nullptr );
-            SDL_RenderPresent( renderer );
+        updateFunction( state, input );
+        if( doRender || state->updated ) {
+            renderFunction( renderer, state, input );
         }
 
         simTimer.split( true );
     }
 
     /// Clean Up + Exit ///
+
+    recStateStream.close();
+    recInputStream.close();
 
     SDL_DestroyWindow( window );
     SDL_Quit();
