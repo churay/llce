@@ -1,14 +1,51 @@
-#include <iostream>
 #include <SDL2/SDL.h>
 
-#include "consts.h"
+#include <iostream>
+#include <fstream>
+
+#include "sdllib.h"
+
 #include "timer.h"
 #include "texture.h"
+#include "consts.h"
+
+typedef void (*update_f)( sdllib::state*, sdllib::input* );
+typedef void (*render_f)( const sdllib::state*, const sdllib::input* );
+typedef std::ios_base::openmode ioflag_t;
 
 int main() {
-    /// Initialize SDL ///
+    /*
+    /// Initialize Application Memory/State ///
 
-    LLCE_ASSERT_ERROR( SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) >= 0,
+    // NOTE(JRC): This base address was chosen by following the steps enumerated
+    // in the 'doc/static_address.md' documentation file.
+#ifdef LLCE_DEBUG
+    bit8_t* const cBufferAddress = (bit8_t*)0x0000100000000000;
+#else
+    bit8_t* const cBufferAddress = nullptr;
+#endif
+    // multiple buffers; one for state data, one for graphics data
+    const uint64_t cBufferLength = MEGABYTE_BL( 1 );
+    llce::memory mem( 1, &cBufferLength, cBufferAddress );
+
+    sdllib::state* state = (sdllib::state*)mem.allocate( 0, sizeof(sdllib::state) ); {
+        sdllib::state temp;
+        memcpy( state, &temp, sizeof(sdllib::state) );
+    }
+
+    std::fstream recStateStream, recInputStream;
+    const char8_t* cStateFilePath = "out/state.dat", * cInputFilePath = "out/input.dat";
+    const ioflag_t cIOModeR = std::fstream::binary | std::fstream::in;
+    const ioflag_t cIOModeW = std::fstream::binary | std::fstream::out | std::fstream::trunc;
+
+    /// Initialize Input State ///
+
+    sdllib::input rawInput;
+    sdllib::input* input = &rawInput;
+    */
+
+    LLCE_ASSERT_ERROR(
+        SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) >= 0,
         "SDL failed to initialize; " << SDL_GetError() );
 
     /// Create an SDL Window ///
