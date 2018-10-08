@@ -112,6 +112,7 @@ int main() {
     /// Update/Render Loop ///
 
     bool32_t isRunning = true, doRender = false;
+    bool32_t isRecording = false, isReplaying = false;
     llce::timer simTimer( 60, llce::timer::type::fps );
 
     while( isRunning ) {
@@ -136,15 +137,64 @@ int main() {
                 if( pressedKey == SDLK_q ) {
                     isRunning = false;
                 } else if( pressedKey == SDLK_r ) {
-                    // TODO(JRC): Start recording.
+                    if( !isRecording ) {
+                        recStateStream.open( cStateFilePath, cIOModeW );
+                        recStateStream.write( mem.buffer(), mem.length() );
+                        recStateStream.close();
+
+                        recInputStream.open( cInputFilePath, cIOModeW );
+                    } else {
+                        recInputStream.close();
+                    }
+                    isRecording = !isRecording;
                 } else if( pressedKey == SDLK_t ) {
-                    // TODO(JRC): Start replaying.
+                    if( !isReplaying ) {
+                        recStateStream.open( cStateFilePath, cIOModeR );
+                        recInputStream.open( cInputFilePath, cIOModeR );
+                        recInputStream.seekg( 0, std::ios_base::end );
+                    } else {
+                        recStateStream.close();
+                        recInputStream.close();
+                    }
+                    isReplaying = !isReplaying;
                 }
             }
         }
 
-        // TODO(JRC): Replaying, recording, llce behavior.
+        // TODO(JRC): This is a bit weird for replaying because we allow intercepts
+        // from any key before replacing all key presses with replay data. This is
+        // good in some ways as it allows recordings to be excited, but it does
+        // open the door for weird behavior like embedded recordings.
+        if( isRecording ) {
+            recInputStream.write( (bit8_t*)input->keys, sizeof(input->keys) );
+        } if( isReplaying ) {
+            if( recInputStream.peek() == EOF || recInputStream.eof() ) {
+                recStateStream.seekg( 0 );
+                recStateStream.read( mem.buffer(), mem.length() );
+                recInputStream.seekg( 0 );
+            }
+            recInputStream.read( (bit8_t*)input->keys, sizeof(input->keys) );
+        }
 
+        LLCE_ASSERT_ERROR(
+            currDylibModTime = llce::platform::fileStatModTime(sdllibFilePath),
+            "Couldn't load library `" << sdllibFileName << "` stat data on step." );
+        if( currDylibModTime != prevDylibModTime ) {
+            llce::platform::fileWaitLock( sdllibFilePath );
+
+            llce::platform::dllUnloadHandle( sdllibHandle, sdllibFileName );
+            sdllibHandle = llce::platform::dllLoadHandle( sdllibFileName );
+            updateFunction = (update_f)llce::platform::dllLoadSymbol( sdllibHandle, "update" );
+            renderFunction = (render_f)llce::platform::dllLoadSymbol( sdllibHandle, "render" );
+            LLCE_ASSERT_ERROR(
+                sdllibHandle != nullptr && updateFunction != nullptr && renderFunction != nullptr,
+                "Couldn't load library `" << sdllibFileName << "` symbols at " <<
+                "simulation time " << simTimer.tt() << "." );
+
+            prevDylibModTime = currDylibModTime;
+        }
+
+        state->time = simTimer.tt();
         updateFunction( state, input );
         if( doRender || state->updated ) {
             renderFunction( renderer, state, input );

@@ -10,13 +10,13 @@ LLCE_DYLOAD_API void update( sdllib::state* pState, sdllib::input* pInput ) {
     // "camera" going upwards.
     int32_t newTexX = pState->texBox[0], newTexY = pState->texBox[1];
     if( pInput->keys[SDL_SCANCODE_W] ) {
-        newTexY += 1;
+        newTexY += 10;
     } if( pInput->keys[SDL_SCANCODE_S] ) {
-        newTexY -= 1;
+        newTexY -= 10;
     } if( pInput->keys[SDL_SCANCODE_A] ) {
-        newTexX += 1;
+        newTexX += 10;
     } if( pInput->keys[SDL_SCANCODE_D] ) {
-        newTexX -= 1;
+        newTexX -= 10;
     }
 
     pState->updated |= newTexX != pState->texBox[0] || newTexY != pState->texBox[1];
