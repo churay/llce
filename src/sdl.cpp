@@ -106,6 +106,8 @@ int main() {
         SDL_TEXTUREACCESS_STREAMING,         // Texture Type (Streaming)
         state->texBox[2],                    // Texture Width
         state->texBox[3] );                  // Texture Height
+    LLCE_ASSERT_ERROR( state->texHandle != nullptr,
+        "SDL failed to create texture; " << SDL_GetError() );
 
     /// Update/Render Loop ///
 
@@ -156,6 +158,7 @@ int main() {
     recStateStream.close();
     recInputStream.close();
 
+    SDL_DestroyTexture( (SDL_Texture*)state->texHandle );
     SDL_DestroyWindow( window );
     SDL_Quit();
 

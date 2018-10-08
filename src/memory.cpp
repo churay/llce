@@ -24,7 +24,7 @@ memory::memory( uint64_t pBlockCount, const uint64_t* pBlockLengths, bit8_t* pBl
 
     mBlockBuffers[0] = mBuffer;
     for( uint64_t blockIdx = 1; blockIdx < pBlockCount; blockIdx++ ) {
-        mBlockBuffers[blockIdx] = (char8_t*)mBlockBuffers[blockIdx-1] + mBlockLengths[blockIdx];
+        mBlockBuffers[blockIdx] = mBlockBuffers[blockIdx-1] + mBlockLengths[blockIdx-1];
     }
 }
 

@@ -19,13 +19,12 @@ LLCE_DYLOAD_API void update( sdllib::state* pState, sdllib::input* pInput ) {
         newTexX -= 1;
     }
 
-    pState->updated = newTexX != pState->texBox[0] || newTexY != pState->texBox[1];
+    pState->updated |= newTexX != pState->texBox[0] || newTexY != pState->texBox[1];
     pState->texBox[0] = newTexX;
     pState->texBox[1] = newTexY;
     if( pState->updated ) {
-        for( int32_t y = 0; y < pState->texBox[3]; y++ ) {
-            for( int32_t x = 0; x < pState->texBox[2]; x++ ) {
-                int32_t i = x + y * pState->texBox[2];
+        for( int32_t y = 0, i = 0; y < pState->texBox[3]; y++ ) {
+            for( int32_t x = 0; x < pState->texBox[2]; x++, i++ ) {
                 pState->texData[i] = 0;
                 pState->texData[i] |= (uint8_t)( 0x00 ) << 24;                  // r
                 pState->texData[i] |= (uint8_t)( y + pState->texBox[1] ) << 16; // g
