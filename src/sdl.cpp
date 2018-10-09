@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_opengl.h>
 
 #include <cstring>
 #include <iostream>
@@ -12,7 +13,7 @@
 #include "consts.h"
 
 typedef void (*update_f)( sdllib::state*, sdllib::input* );
-typedef void (*render_f)( SDL_Renderer*, const sdllib::state*, const sdllib::input* );
+typedef void (*render_f)( const sdllib::state*, const sdllib::input* );
 typedef std::ios_base::openmode ioflag_t;
 
 int main() {
@@ -25,21 +26,18 @@ int main() {
 #else
     bit8_t* const cBufferAddress = nullptr;
 #endif
-    const uint64_t cStateBufferIdx = 0, cGraphicsBufferIdx = 1;
-    const uint64_t cBufferLengths[] = { MEGABYTE_BL(1), MEGABYTE_BL(32) };
-    const uint64_t cBufferCount = sizeof( cBufferLengths ) / sizeof( cBufferLengths[0] );
-    llce::memory mem( cBufferCount, &cBufferLengths[0], cBufferAddress );
+    const uint64_t cBufferLength = MEGABYTE_BL( 1 );
+    llce::memory mem( 1, &cBufferLength, cBufferAddress );
 
     const int32_t cWindowWidth = 640, cWindowHeight = 480;
-    sdllib::state* state = (sdllib::state*)mem.allocate( cStateBufferIdx, sizeof(sdllib::state) ); {
+    sdllib::state* state = (sdllib::state*)mem.allocate( 0, sizeof(sdllib::state) ); {
         sdllib::state temp;
         memcpy( state, &temp, sizeof(sdllib::state) );
 
-        state->texData = (uint32_t*)mem.allocate( cGraphicsBufferIdx,
-            sizeof(uint32_t) * cWindowWidth * cWindowHeight );
-        state->texBox[2] = cWindowWidth;
-        state->texBox[3] = cWindowHeight;
-        state->updated = true;
+        state->box[0] = 0.0;
+        state->box[1] = 0.0;
+        state->box[2] = 0.1;
+        state->box[3] = 0.1;
     }
 
     std::fstream recStateStream, recInputStream;
@@ -51,10 +49,6 @@ int main() {
 
     sdllib::input rawInput;
     sdllib::input* input = &rawInput;
-
-    LLCE_ASSERT_ERROR(
-        SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) >= 0,
-        "SDL failed to initialize; " << SDL_GetError() );
 
     /// Load Dynamic Shared Library ///
 
@@ -80,38 +74,39 @@ int main() {
         prevDylibModTime = currDylibModTime = llce::platform::fileStatModTime(sdllibFilePath),
         "Couldn't load library `" << sdllibFileName << "` stat data on initialize." );
 
-    /// Create an SDL Window ///
+    /// Initialize Graphics Assets ///
+
+    LLCE_ASSERT_ERROR(
+        SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) >= 0,
+        "SDL failed to initialize; " << SDL_GetError() );
+
+    { // Initialize OpenGL Context //
+        SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
+        SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 2 );
+
+        SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 ); // double-buffer
+        SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 32 );
+
+        SDL_GL_SetSwapInterval( 1 ); //vsync
+    }
 
     SDL_Window* window = SDL_CreateWindow(
-        "Loop-Live Code Editing",       // Window Title
-        SDL_WINDOWPOS_UNDEFINED,        // Window X Position
-        SDL_WINDOWPOS_UNDEFINED,        // Window Y Position
-        cWindowWidth,                   // Window Width
-        cWindowHeight,                  // Window Height
-        SDL_WINDOW_RESIZABLE );         // Window Initialization Flags
+        "Loop-Live Code Editing",                   // Window Title
+        SDL_WINDOWPOS_UNDEFINED,                    // Window X Position
+        SDL_WINDOWPOS_UNDEFINED,                    // Window Y Position
+        cWindowWidth,                               // Window Width
+        cWindowHeight,                              // Window Height
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE ); // Window Flags
     LLCE_ASSERT_ERROR( window != nullptr,
         "SDL failed to create window instance; " << SDL_GetError() );
 
-    SDL_Renderer* renderer = SDL_CreateRenderer( window, -1, 0 );
-    LLCE_ASSERT_ERROR( renderer != nullptr,
-        "SDL failed to create window renderer; " << SDL_GetError() );
-
-    // TODO(JRC): There isn't any guarantee that the texture handle will be
-    // at the same address between instantiations of the application, so this
-    // won't always work. This should really be fixed through a local texture
-    // manager or something of that ilk.
-    state->texHandle = (void*)SDL_CreateTexture(
-        renderer,                            // Host Renderer
-        SDL_PIXELFORMAT_RGBA8888,            // Pixel Format (RGBA, 8 bits each)
-        SDL_TEXTUREACCESS_STREAMING,         // Texture Type (Streaming)
-        state->texBox[2],                    // Texture Width
-        state->texBox[3] );                  // Texture Height
-    LLCE_ASSERT_ERROR( state->texHandle != nullptr,
-        "SDL failed to create texture; " << SDL_GetError() );
+    SDL_GLContext glcontext = SDL_GL_CreateContext( window );
+    LLCE_ASSERT_ERROR( glcontext != nullptr,
+        "SDL failed to generate OpenGL context; " << SDL_GetError() );
 
     /// Update/Render Loop ///
 
-    bool32_t isRunning = true, doRender = false;
+    bool32_t isRunning = true;
     bool32_t isRecording = false, isReplaying = false;
     llce::timer simTimer( 60, llce::timer::type::fps );
 
@@ -125,10 +120,6 @@ int main() {
         while( SDL_PollEvent(&event) ) {
             if( event.type == SDL_QUIT ) {
                 isRunning = false;
-            } else if( event.type == SDL_WINDOWEVENT  && (
-                   event.window.event == SDL_WINDOWEVENT_RESIZED ||
-                   event.window.event == SDL_WINDOWEVENT_EXPOSED) ) {
-                doRender = true;
             } else if( event.type == SDL_KEYDOWN ) {
                 // NOTE(JRC): The keys processed here are those that are pressed
                 // but not held. This type of processing is good for one-time
@@ -194,13 +185,13 @@ int main() {
             prevDylibModTime = currDylibModTime;
         }
 
-        state->time = simTimer.tt();
+        // TODO(JRC): Should prepare viewport for game rendering here.
         updateFunction( state, input );
-        if( doRender || state->updated ) {
-            renderFunction( renderer, state, input );
-        }
+        renderFunction( state, input );
+        SDL_GL_SwapWindow( window );
 
         simTimer.split( true );
+        state->time += simTimer.ft();
     }
 
     /// Clean Up + Exit ///
@@ -208,7 +199,6 @@ int main() {
     recStateStream.close();
     recInputStream.close();
 
-    SDL_DestroyTexture( (SDL_Texture*)state->texHandle );
     SDL_DestroyWindow( window );
     SDL_Quit();
 

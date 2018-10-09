@@ -8,10 +8,9 @@
 namespace sdllib {
 
 struct state {
-    uint32_t* texData = nullptr;
-    int32_t texBox[4] = {0, 0, 0, 0}; // x, y, w, h
-    void* texHandle = nullptr;
-    bool8_t updated = false;
+    float32_t box[4] = { 0.0, 0.0, 0.0, 0.0 }; // x, y, w, h
+    float32_t boxColor[4] = { 0.0, 0.0, 0.0, 0.0 }; // r, g, b, a
+    float32_t backColor[4] = { 1.0, 1.0, 1.0, 1.0 }; // r, g, b, a
     float64_t time = 0.0;
 };
 

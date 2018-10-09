@@ -37,8 +37,8 @@ lock_command = touch $(1).lock && flock -x -w 1 $(1).lock -c $(2) && rm $(1).loc
 all : $(PROJ_EXE)
 
 sdl : $(PROJ_EXE)
-$(PROJ_EXE) : $(PROJ_MAIN) $(BIN_DIR)/platform.o $(BIN_DIR)/texture.o $(BIN_DIR)/timer.o $(BIN_DIR)/memory.o $(BIN_DIR)/sdllib.so | $(BIN_DIR) $(OUT_DIR)
-	$(call lock_command,$@,'$(CXX) $(CXX_FLAGS) -ldl $(CXX_LIB_FLAGS) $(CXX_INCLS) $(filter-out %.so,$^) -o $@ $(CXX_LIB_INCLS)')
+$(PROJ_EXE) : $(PROJ_MAIN) $(BIN_DIR)/platform.o $(BIN_DIR)/timer.o $(BIN_DIR)/memory.o $(BIN_DIR)/sdllib.so | $(BIN_DIR) $(OUT_DIR)
+	$(call lock_command,$@,'$(CXX) $(CXX_FLAGS) -ldl -lGL $(CXX_LIB_FLAGS) $(CXX_INCLS) $(filter-out %.so,$^) -o $@ $(CXX_LIB_INCLS)')
 
 tty : $(EX_EXE)
 $(EX_EXE) : $(EX_MAIN) $(BIN_DIR)/platform.o $(BIN_DIR)/keyboard.o $(BIN_DIR)/timer.o $(BIN_DIR)/memory.o $(BIN_DIR)/ttylib.so | $(BIN_DIR) $(OUT_DIR)
