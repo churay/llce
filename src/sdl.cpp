@@ -185,7 +185,13 @@ int main() {
             prevDylibModTime = currDylibModTime;
         }
 
-        // TODO(JRC): Should prepare viewport for game rendering here.
+        glViewport( 0, 0, cWindowWidth, cWindowHeight );
+        glMatrixMode( GL_MODELVIEW );
+        glLoadIdentity();
+        glMatrixMode( GL_PROJECTION );
+        glLoadIdentity();
+        glOrtho( -1.0f, +1.0f, -1.0f, +1.0f, -1.0f, +1.0f );
+
         updateFunction( state, input );
         renderFunction( state, input );
         SDL_GL_SwapWindow( window );
