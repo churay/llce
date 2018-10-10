@@ -29,7 +29,6 @@ int main() {
     const uint64_t cBufferLength = MEGABYTE_BL( 1 );
     llce::memory mem( 1, &cBufferLength, cBufferAddress );
 
-    const int32_t cWindowWidth = 640, cWindowHeight = 480;
     sdllib::state* state = (sdllib::state*)mem.allocate( 0, sizeof(sdllib::state) ); {
         sdllib::state temp;
         memcpy( state, &temp, sizeof(sdllib::state) );
@@ -90,12 +89,13 @@ int main() {
         SDL_GL_SetSwapInterval( 1 ); //vsync
     }
 
+    int32_t windowWidth = 640, windowHeight = 480;
     SDL_Window* window = SDL_CreateWindow(
         "Loop-Live Code Editing",                   // Window Title
         SDL_WINDOWPOS_UNDEFINED,                    // Window X Position
         SDL_WINDOWPOS_UNDEFINED,                    // Window Y Position
-        cWindowWidth,                               // Window Width
-        cWindowHeight,                              // Window Height
+        windowWidth,                                // Window Width
+        windowHeight,                               // Window Height
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE ); // Window Flags
     LLCE_ASSERT_ERROR( window != nullptr,
         "SDL failed to create window instance; " << SDL_GetError() );
@@ -120,6 +120,10 @@ int main() {
         while( SDL_PollEvent(&event) ) {
             if( event.type == SDL_QUIT ) {
                 isRunning = false;
+            } else if( event.type == SDL_WINDOWEVENT  && (
+                   event.window.event == SDL_WINDOWEVENT_RESIZED ||
+                   event.window.event == SDL_WINDOWEVENT_EXPOSED) ) {
+                SDL_GetWindowSize( window, &windowWidth, &windowHeight );
             } else if( event.type == SDL_KEYDOWN ) {
                 // NOTE(JRC): The keys processed here are those that are pressed
                 // but not held. This type of processing is good for one-time
@@ -185,15 +189,19 @@ int main() {
             prevDylibModTime = currDylibModTime;
         }
 
-        glViewport( 0, 0, cWindowWidth, cWindowHeight );
+        glViewport( 0, 0, windowWidth, windowHeight );
         glMatrixMode( GL_MODELVIEW );
         glLoadIdentity();
         glMatrixMode( GL_PROJECTION );
         glLoadIdentity();
         glOrtho( -1.0f, +1.0f, -1.0f, +1.0f, -1.0f, +1.0f );
 
-        updateFunction( state, input );
-        renderFunction( state, input );
+        glPushMatrix(); {
+            updateFunction( state, input );
+            renderFunction( state, input );
+        } glPopMatrix();
+
+        // TODO(JRC): Render text based on what's currently happening.
         SDL_GL_SwapWindow( window );
 
         simTimer.split( true );

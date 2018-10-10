@@ -1,3 +1,5 @@
+#include <cstdlib>
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 
@@ -13,6 +15,9 @@ LLCE_DYLOAD_API void update( sdllib::state* pState, sdllib::input* pInput ) {
     } if( pInput->keys[SDL_SCANCODE_D] ) {
         pState->box[0] += 0.1;
     }
+
+    pState->box[0] = std::min( 1.0f - pState->box[2], std::max(-1.0f, pState->box[0]) );
+    pState->box[1] = std::min( 1.0f - pState->box[3], std::max(-1.0f, pState->box[1]) );
 }
 
 
