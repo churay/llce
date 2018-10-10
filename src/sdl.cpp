@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
+#include <SDL2/SDL_ttf.h>
 
 #include <cstring>
 #include <iostream>
@@ -78,6 +79,9 @@ int main() {
     LLCE_ASSERT_ERROR(
         SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) >= 0,
         "SDL failed to initialize; " << SDL_GetError() );
+    LLCE_ASSERT_ERROR(
+        TTF_Init() >= 0,
+        "SDL-TTF failed to initialize; " << TTF_GetError() );
 
     { // Initialize OpenGL Context //
         SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
@@ -103,6 +107,12 @@ int main() {
     SDL_GLContext glcontext = SDL_GL_CreateContext( window );
     LLCE_ASSERT_ERROR( glcontext != nullptr,
         "SDL failed to generate OpenGL context; " << SDL_GetError() );
+
+    const char8_t* cFontPath = "dat/dejavu_mono.ttf";
+    const int32_t cFontSize = 12;
+    TTF_Font* font = TTF_OpenFont( cFontPath, cFontSize );
+    LLCE_ASSERT_ERROR( font != nullptr,
+        "SDL-TTF failed to create font; " << TTF_GetError() );
 
     /// Update/Render Loop ///
 
@@ -212,6 +222,8 @@ int main() {
 
     recStateStream.close();
     recInputStream.close();
+
+    TTF_Quit();
 
     SDL_DestroyWindow( window );
     SDL_Quit();

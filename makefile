@@ -5,13 +5,14 @@ CXX_FLAGS = -std=c++1y -Wall -fno-exceptions -g3 -O0 -DLLCE_DEBUG
 # CXX_FLAGS = -std=c++1y -Wall -fno-exceptions -g0 -O3
 CXX_INCLS = -I$(SRC_DIR) -Wl,-rpath=$(BIN_DIR)
 
-CXX_LIB_FLAGS = `pkg-config --cflags sdl2`
-CXX_LIB_INCLS = `pkg-config --static --libs sdl2`
+CXX_LIB_FLAGS = `pkg-config --cflags sdl2 SDL2_ttf`
+CXX_LIB_INCLS = `pkg-config --static --libs sdl2 SDL2_ttf`
 
 ### Project Files/Directories ###
 
 PROJ_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BIN_DIR = $(PROJ_DIR)/bin
+DAT_DIR = $(PROJ_DIR)/dat
 OBJ_DIR = $(PROJ_DIR)/obj
 OUT_DIR = $(PROJ_DIR)/out
 ETC_DIR = $(PROJ_DIR)/etc
