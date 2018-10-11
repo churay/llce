@@ -34,10 +34,10 @@ int main() {
         sdllib::state temp;
         memcpy( state, &temp, sizeof(sdllib::state) );
 
-        state->box[0] = 0.0;
-        state->box[1] = 0.0;
         state->box[2] = 0.1;
         state->box[3] = 0.1;
+        state->box[0] = 0.0 - state->box[2] / 2.0;
+        state->box[1] = 0.0 - state->box[3] / 2.0;
     }
 
     std::fstream recStateStream, recInputStream;
@@ -119,6 +119,7 @@ int main() {
     { // Configure OpenGL Context //
         glEnable( GL_TEXTURE_2D );
         glDisable( GL_LIGHTING );
+        glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );
     }
 
     /// Generate Graphics Assets ///
@@ -148,18 +149,24 @@ int main() {
             (uint8_t)( (textureColor >> 2*8) & 0xFF ),
             (uint8_t)( (textureColor >> 1*8) & 0xFF ),
             (uint8_t)( (textureColor >> 0*8) & 0xFF ) };
-        SDL_Surface* renderSurface = TTF_RenderText_Solid( font, text, renderColor );
+        // SDL_Surface* renderSurface = TTF_RenderText_Solid( font, text, renderColor );
+
+        // NOTE(JRC): Debug surface here is guaranteed to be rendering properly
+        // (and verified with debugger), so there's an issue w/ binding and rendering.
+        SDL_Surface* renderSurface = SDL_CreateRGBSurface( 0, 20, 20, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF );
         LLCE_ASSERT_ERROR( renderSurface != nullptr,
             "SDL-TTF failed to render font; " << TTF_GetError() );
+        SDL_FillRect( renderSurface, nullptr, SDL_MapRGB(renderSurface->format, 255, 0, 0));
 
         glBindTexture( GL_TEXTURE_2D, textureID );
         glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, renderSurface->w, renderSurface->h,
             0, GL_RGBA, GL_UNSIGNED_BYTE, renderSurface->pixels );
+        glBindTexture( GL_TEXTURE_2D, 0 );
 
         SDL_FreeSurface( renderSurface );
     };
 
-    cGenerateTextTexture( fpsTextureID, fpsTextureColor, "O" );
+    // cGenerateTextTexture( fpsTextureID, fpsTextureColor, "FPS: ???" );
     // cGenerateTextTexture( recTextureID, recTextureColor, "Recording" );
     // cGenerateTextTexture( repTextureID, repTextureColor, "Replaying" );
 
@@ -249,6 +256,8 @@ int main() {
         }
 
         glViewport( 0, 0, windowWidth, windowHeight );
+        glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
         glMatrixMode( GL_MODELVIEW );
         glLoadIdentity();
         glMatrixMode( GL_PROJECTION );
@@ -260,17 +269,18 @@ int main() {
             renderFunction( state, input );
         } glPopMatrix();
 
-        // glBindTexture( GL_TEXTURE_2D, fpsTextureID );
-        // glBegin( GL_QUADS );
-        //     glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.0f );
-        //     glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 2.0f );
-        //     glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 2.0f, -1.0f + 2.0f );
-        //     glTexCoord2f( 1.0f, 0.0f ); glVertex2f( -1.0f + 2.0f, -1.0f + 0.0f );
-        //     // glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.0f );
-        //     // glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.1f );
-        //     // glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 0.1f, -1.0f + 0.1f );
-        //     // glTexCoord2f( 1.0f, 0.0f ); glVertex2f( -1.0f + 0.1f, -1.0f + 0.0f );
-        // glEnd();
+        glBindTexture( GL_TEXTURE_2D, fpsTextureID );
+        glBegin( GL_QUADS );
+            // glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.0f );
+            // glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 2.0f );
+            // glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 2.0f, -1.0f + 2.0f );
+            // glTexCoord2f( 1.0f, 0.0f ); glVertex2f( -1.0f + 2.0f, -1.0f + 0.0f );
+            // glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.0f );
+            // glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.1f );
+            // glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 0.1f, -1.0f + 0.1f );
+            // glTexCoord2f( 1.0f, 0.0f ); glVertex2f( -1.0f + 0.1f, -1.0f + 0.0f );
+        glEnd();
+        // glBindTexture( GL_TEXTURE_2D, 0 );
 
         // TODO(JRC): Render text based on what's currently happening.
         SDL_GL_SwapWindow( window );
