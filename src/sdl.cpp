@@ -74,7 +74,7 @@ int main() {
         prevDylibModTime = currDylibModTime = llce::platform::fileStatModTime(sdllibFilePath),
         "Couldn't load library `" << sdllibFileName << "` stat data on initialize." );
 
-    /// Initialize Graphics Assets ///
+    /// Initialize Windows/Graphics ///
 
     LLCE_ASSERT_ERROR(
         SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) >= 0,
@@ -108,11 +108,60 @@ int main() {
     LLCE_ASSERT_ERROR( glcontext != nullptr,
         "SDL failed to generate OpenGL context; " << SDL_GetError() );
 
+    // TODO(JRC): Make this a more reliable path, ideally independent of even
+    // the current working directory.
     const char8_t* cFontPath = "dat/dejavu_mono.ttf";
     const int32_t cFontSize = 12;
     TTF_Font* font = TTF_OpenFont( cFontPath, cFontSize );
     LLCE_ASSERT_ERROR( font != nullptr,
         "SDL-TTF failed to create font; " << TTF_GetError() );
+
+    { // Configure OpenGL Context //
+        glEnable( GL_TEXTURE_2D );
+        glDisable( GL_LIGHTING );
+    }
+
+    /// Generate Graphics Assets ///
+
+    uint32_t textureIDs[] = { 0, 0, 0 };
+    uint32_t textureColors[] = { 0xFF0000FF, 0x00FF00FF, 0x0000FFFF };
+    uint32_t
+        & fpsTextureID = textureIDs[0], & fpsTextureColor = textureColors[0],
+        & recTextureID = textureIDs[1], & recTextureColor = textureColors[1],
+        & repTextureID = textureIDs[2], & repTextureColor = textureColors[2];
+
+    const uint32_t cTextureCount = sizeof( textureIDs ) / sizeof( textureIDs[0] );
+    for( uint32_t textureIdx = 0; textureIdx < cTextureCount; textureIdx++ ) {
+        uint32_t& textureID = textureIDs[textureIdx];
+        glGenTextures( 1, &textureID );
+        glBindTexture( GL_TEXTURE_2D, textureID );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
+    }
+
+    const auto cGenerateTextTexture = [ &font ] (
+            const uint32_t textureID, const uint32_t textureColor, const char8_t* text ) {
+        SDL_Color renderColor = {
+            (uint8_t)( (textureColor >> 3*8) & 0xFF ),
+            (uint8_t)( (textureColor >> 2*8) & 0xFF ),
+            (uint8_t)( (textureColor >> 1*8) & 0xFF ),
+            (uint8_t)( (textureColor >> 0*8) & 0xFF ) };
+        SDL_Surface* renderSurface = TTF_RenderText_Solid( font, text, renderColor );
+        LLCE_ASSERT_ERROR( renderSurface != nullptr,
+            "SDL-TTF failed to render font; " << TTF_GetError() );
+
+        glBindTexture( GL_TEXTURE_2D, textureID );
+        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, renderSurface->w, renderSurface->h,
+            0, GL_RGBA, GL_UNSIGNED_BYTE, renderSurface->pixels );
+
+        SDL_FreeSurface( renderSurface );
+    };
+
+    cGenerateTextTexture( fpsTextureID, fpsTextureColor, "O" );
+    // cGenerateTextTexture( recTextureID, recTextureColor, "Recording" );
+    // cGenerateTextTexture( repTextureID, repTextureColor, "Replaying" );
 
     /// Update/Render Loop ///
 
@@ -211,6 +260,18 @@ int main() {
             renderFunction( state, input );
         } glPopMatrix();
 
+        // glBindTexture( GL_TEXTURE_2D, fpsTextureID );
+        // glBegin( GL_QUADS );
+        //     glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.0f );
+        //     glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 2.0f );
+        //     glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 2.0f, -1.0f + 2.0f );
+        //     glTexCoord2f( 1.0f, 0.0f ); glVertex2f( -1.0f + 2.0f, -1.0f + 0.0f );
+        //     // glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.0f );
+        //     // glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.1f );
+        //     // glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 0.1f, -1.0f + 0.1f );
+        //     // glTexCoord2f( 1.0f, 0.0f ); glVertex2f( -1.0f + 0.1f, -1.0f + 0.0f );
+        // glEnd();
+
         // TODO(JRC): Render text based on what's currently happening.
         SDL_GL_SwapWindow( window );
 
@@ -223,6 +284,7 @@ int main() {
     recStateStream.close();
     recInputStream.close();
 
+    TTF_CloseFont( font );
     TTF_Quit();
 
     SDL_DestroyWindow( window );
