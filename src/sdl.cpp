@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_pixels.h>
 #include <SDL2/SDL_opengl.h>
 #include <SDL2/SDL_ttf.h>
 
@@ -129,7 +130,7 @@ int main() {
 
     const static uint32_t csTextureTextCap = 20;
     uint32_t textureGLIDs[] = { 0, 0, 0 };
-    uint32_t textureColors[] = { 0xFF0000FF, 0xFF00FF00, 0xFFFF0000 };
+    uint32_t textureColors[] = { 0xFF0000FF, 0xFF00FF00, 0xFFFF0000 }; // little endian
     char8_t textureTexts[][csTextureTextCap] = { "FPS: ???", "Recording", "Replaying" };
     const uint32_t cFPSTextureID = 0, cRecTextureID = 1, cRepTextureID = 2;
 
@@ -156,23 +157,20 @@ int main() {
             (uint8_t)( (textureColor >> 1*8) & 0xFF ),
             (uint8_t)( (textureColor >> 2*8) & 0xFF ),
             (uint8_t)( (textureColor >> 3*8) & 0xFF ) };
-        // SDL_Surface* renderSurface = TTF_RenderText_Solid( font, textureText, renderColor );
 
-        // // NOTE(JRC): Debug surface here is guaranteed to be rendering properly
-        // // (and verified with debugger), so there's an issue w/ binding and rendering.
-        // LLCE_ASSERT_ERROR( renderSurface != nullptr,
-        //     "SDL-TTF failed to render font; " << TTF_GetError() );
-
-        SDL_Surface* renderSurface = SDL_CreateRGBSurface( 0, 20, 20, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000 );
-        LLCE_ASSERT_ERROR( renderSurface != nullptr,
+        SDL_Surface* textSurface = TTF_RenderText_Solid( font, textureText, renderColor );
+        LLCE_ASSERT_ERROR( textSurface != nullptr,
             "SDL-TTF failed to render font; " << TTF_GetError() );
-        SDL_FillRect( renderSurface, nullptr, textureColor );
+        SDL_Surface* renderSurface = SDL_ConvertSurfaceFormat( textSurface, SDL_PIXELFORMAT_RGBA8888, 0 );
+        LLCE_ASSERT_ERROR( renderSurface != nullptr,
+            "SDL failed to convert render font output; " << SDL_GetError() );
 
         glBindTexture( GL_TEXTURE_2D, textureGLID );
         glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, renderSurface->w, renderSurface->h,
             0, GL_RGBA, GL_UNSIGNED_BYTE, renderSurface->pixels );
 
         SDL_FreeSurface( renderSurface );
+        SDL_FreeSurface( textSurface );
     };
 
     for( uint32_t textureIdx = 0; textureIdx < cTextureCount; textureIdx++ ) {
@@ -280,17 +278,17 @@ int main() {
 
         std::snprintf( &textureTexts[cFPSTextureID][0],
             csTextureTextCap,
-            "FPS: %0.3f", simTimer.ft() );
+            "FPS: %0.2f", simTimer.fps() );
         cGenerateTextTexture( cFPSTextureID );
 
         glEnable( GL_TEXTURE_2D ); {
             glBindTexture( GL_TEXTURE_2D, textureGLIDs[cFPSTextureID] );
             glBegin( GL_QUADS ); {
                 glColor4f( 1.0f, 1.0f, 1.0f, 1.0f );
-                glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.0f );
-                glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.2f );
-                glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 0.4f, -1.0f + 0.2f );
-                glTexCoord2f( 1.0f, 0.0f ); glVertex2f( -1.0f + 0.4f, -1.0f + 0.0f );
+                glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.2f ); // UL
+                glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.0f ); // BL
+                glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 0.5f, -1.0f + 0.0f ); // BR
+                glTexCoord2f( 1.0f, 0.0f ); glVertex2f( -1.0f + 0.5f, -1.0f + 0.2f ); // UR
             } glEnd();
 
             if( isRecording || isReplaying ) {
@@ -298,10 +296,10 @@ int main() {
                 glBindTexture( GL_TEXTURE_2D, textureGLIDs[textureID] );
                 glBegin( GL_QUADS ); {
                     glColor4f( 1.0f, 1.0f, 1.0f, 1.0f );
-                    glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, +1.0f - 0.2f );
-                    glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, +1.0f - 0.0f );
-                    glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 0.4f, +1.0f - 0.0f );
-                    glTexCoord2f( 1.0f, 0.0f ); glVertex2f( -1.0f + 0.4f, +1.0f - 0.2f );
+                    glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, +1.0f - 0.0f ); // UL
+                    glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, +1.0f - 0.2f ); // BL
+                    glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 0.5f, +1.0f - 0.2f ); // BR
+                    glTexCoord2f( 1.0f, 0.0f ); glVertex2f( -1.0f + 0.5f, +1.0f - 0.0f ); // UR
                 } glEnd();
             }
         } glDisable( GL_TEXTURE_2D );
