@@ -128,6 +128,8 @@ int main() {
 
     /// Generate Graphics Assets ///
 
+    const static uint32_t csTextureFormat = IS_BIG_ENDIAN ?
+        SDL_PIXELFORMAT_RGBA8888 : SDL_PIXELFORMAT_ABGR8888;
     const static uint32_t csTextureTextCap = 20;
     uint32_t textureGLIDs[] = { 0, 0, 0 };
     uint32_t textureColors[] = { 0xFF0000FF, 0xFF00FF00, 0xFFFF0000 }; // little endian
@@ -161,7 +163,7 @@ int main() {
         SDL_Surface* textSurface = TTF_RenderText_Solid( font, textureText, renderColor );
         LLCE_ASSERT_ERROR( textSurface != nullptr,
             "SDL-TTF failed to render font; " << TTF_GetError() );
-        SDL_Surface* renderSurface = SDL_ConvertSurfaceFormat( textSurface, SDL_PIXELFORMAT_RGBA8888, 0 );
+        SDL_Surface* renderSurface = SDL_ConvertSurfaceFormat( textSurface, csTextureFormat, 0 );
         LLCE_ASSERT_ERROR( renderSurface != nullptr,
             "SDL failed to convert render font output; " << SDL_GetError() );
 
@@ -282,9 +284,9 @@ int main() {
         cGenerateTextTexture( cFPSTextureID );
 
         glEnable( GL_TEXTURE_2D ); {
+            glColor4f( 1.0f, 1.0f, 1.0f, 1.0f );
             glBindTexture( GL_TEXTURE_2D, textureGLIDs[cFPSTextureID] );
             glBegin( GL_QUADS ); {
-                glColor4f( 1.0f, 1.0f, 1.0f, 1.0f );
                 glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.2f ); // UL
                 glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, -1.0f + 0.0f ); // BL
                 glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 0.5f, -1.0f + 0.0f ); // BR
@@ -295,7 +297,6 @@ int main() {
                 const uint32_t textureID = isRecording ? cRecTextureID : cRepTextureID;
                 glBindTexture( GL_TEXTURE_2D, textureGLIDs[textureID] );
                 glBegin( GL_QUADS ); {
-                    glColor4f( 1.0f, 1.0f, 1.0f, 1.0f );
                     glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, +1.0f - 0.0f ); // UL
                     glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, +1.0f - 0.2f ); // BL
                     glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 0.5f, +1.0f - 0.2f ); // BR
@@ -304,7 +305,6 @@ int main() {
             }
         } glDisable( GL_TEXTURE_2D );
 
-        // TODO(JRC): Render text based on what's currently happening.
         SDL_GL_SwapWindow( window );
 
         simTimer.split( true );
