@@ -128,8 +128,6 @@ int main() {
 
     /// Generate Graphics Assets ///
 
-    const static uint32_t csTextureFormat = IS_BIG_ENDIAN ?
-        SDL_PIXELFORMAT_RGBA8888 : SDL_PIXELFORMAT_ABGR8888;
     const static uint32_t csTextureTextCap = 20;
     uint32_t textureGLIDs[] = { 0, 0, 0 };
     uint32_t textureColors[] = { 0xFF0000FF, 0xFF00FF00, 0xFFFF0000 }; // little endian
@@ -163,13 +161,13 @@ int main() {
         SDL_Surface* textSurface = TTF_RenderText_Solid( font, textureText, renderColor );
         LLCE_ASSERT_ERROR( textSurface != nullptr,
             "SDL-TTF failed to render font; " << TTF_GetError() );
-        SDL_Surface* renderSurface = SDL_ConvertSurfaceFormat( textSurface, csTextureFormat, 0 );
+        SDL_Surface* renderSurface = SDL_ConvertSurfaceFormat( textSurface, SDL_PIXELFORMAT_RGBA8888, 0 );
         LLCE_ASSERT_ERROR( renderSurface != nullptr,
             "SDL failed to convert render font output; " << SDL_GetError() );
 
         glBindTexture( GL_TEXTURE_2D, textureGLID );
         glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, renderSurface->w, renderSurface->h,
-            0, GL_RGBA, GL_UNSIGNED_BYTE, renderSurface->pixels );
+            0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, renderSurface->pixels );
 
         SDL_FreeSurface( renderSurface );
         SDL_FreeSurface( textSurface );
