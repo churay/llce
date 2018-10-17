@@ -129,10 +129,10 @@ int main() {
     /// Generate Graphics Assets ///
 
     const static uint32_t csTextureTextCap = 20;
-    uint32_t textureGLIDs[] = { 0, 0, 0 };
+    uint32_t textureGLIDs[] = { 0, 0, 0, 0 };
     uint32_t textureColors[] = { 0xFF0000FF, 0xFF00FF00, 0xFFFF0000 }; // little endian
-    char8_t textureTexts[][csTextureTextCap] = { "FPS: ???", "Recording", "Replaying" };
-    const uint32_t cFPSTextureID = 0, cRecTextureID = 1, cRepTextureID = 2;
+    char8_t textureTexts[][csTextureTextCap] = { "FPS: ???", "Recording", "Replaying", "Time: ???" };
+    const uint32_t cFPSTextureID = 0, cRecTextureID = 1, cRepTextureID = 2, cTimeTextureID = 3;
 
     const uint32_t cTextureCount = sizeof( textureGLIDs ) / sizeof( textureGLIDs[0] );
     for( uint32_t textureIdx = 0; textureIdx < cTextureCount; textureIdx++ ) {
@@ -145,12 +145,9 @@ int main() {
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
     }
 
-    const auto cGenerateTextTexture =
-            [ &textureGLIDs, &textureColors, &textureTexts, &font ]
-            ( const uint32_t textureID ) {
+    const auto cGenerateTextTexture = [ &textureGLIDs, &font ]
+            ( const uint32_t textureID, const uint32_t textureColor, const char8_t* textureText ) {
         const uint32_t& textureGLID = textureGLIDs[textureID];
-        const uint32_t& textureColor = textureColors[textureID];
-        const char8_t* textureText = &textureTexts[textureID][0];
 
         SDL_Color renderColor = {
             (uint8_t)( (textureColor >> 0*8) & 0xFF ),
@@ -174,13 +171,15 @@ int main() {
     };
 
     for( uint32_t textureIdx = 0; textureIdx < cTextureCount; textureIdx++ ) {
-        cGenerateTextTexture( textureIdx );
+        cGenerateTextTexture( textureIdx, textureColors[textureIdx], textureTexts[textureIdx] );
     }
 
     /// Update/Render Loop ///
 
     bool32_t isRunning = true;
     bool32_t isRecording = false, isReplaying = false;
+    uint32_t repFrameIdx = 0, recFrameCount = 0;
+
     llce::timer simTimer( 60, llce::timer::type::fps );
 
     while( isRunning ) {
@@ -206,10 +205,10 @@ int main() {
                     isRunning = false;
                 } else if( pressedKey == SDLK_r ) {
                     if( !isRecording ) {
+                        recFrameCount = 0;
                         recStateStream.open( cStateFilePath, cIOModeW );
                         recStateStream.write( mem.buffer(), mem.length() );
                         recStateStream.close();
-
                         recInputStream.open( cInputFilePath, cIOModeW );
                     } else {
                         recInputStream.close();
@@ -217,10 +216,12 @@ int main() {
                     isRecording = !isRecording;
                 } else if( pressedKey == SDLK_t ) {
                     if( !isReplaying ) {
+                        repFrameIdx = 0;
                         recStateStream.open( cStateFilePath, cIOModeR );
                         recInputStream.open( cInputFilePath, cIOModeR );
                         recInputStream.seekg( 0, std::ios_base::end );
                     } else {
+                        repFrameIdx = 0;
                         recStateStream.close();
                         recInputStream.close();
                     }
@@ -235,13 +236,16 @@ int main() {
         // open the door for weird behavior like embedded recordings.
         if( isRecording ) {
             recInputStream.write( (bit8_t*)input->keys, sizeof(input->keys) );
+            recFrameCount++;
         } if( isReplaying ) {
             if( recInputStream.peek() == EOF || recInputStream.eof() ) {
+                repFrameIdx = 0;
                 recStateStream.seekg( 0 );
                 recStateStream.read( mem.buffer(), mem.length() );
                 recInputStream.seekg( 0 );
             }
             recInputStream.read( (bit8_t*)input->keys, sizeof(input->keys) );
+            repFrameIdx++;
         }
 
         LLCE_ASSERT_ERROR(
@@ -276,12 +280,12 @@ int main() {
             renderFunction( state, input );
         } glPopMatrix();
 
-        std::snprintf( &textureTexts[cFPSTextureID][0],
-            csTextureTextCap,
-            "FPS: %0.2f", simTimer.fps() );
-        cGenerateTextTexture( cFPSTextureID );
-
         glEnable( GL_TEXTURE_2D ); {
+            std::snprintf( &textureTexts[cFPSTextureID][0],
+                csTextureTextCap,
+                "FPS: %0.2f", simTimer.fps() );
+            cGenerateTextTexture( cFPSTextureID, textureColors[cFPSTextureID], textureTexts[cFPSTextureID] );
+
             glColor4f( 1.0f, 1.0f, 1.0f, 1.0f );
             glBindTexture( GL_TEXTURE_2D, textureGLIDs[cFPSTextureID] );
             glBegin( GL_QUADS ); {
@@ -292,13 +296,28 @@ int main() {
             } glEnd();
 
             if( isRecording || isReplaying ) {
-                const uint32_t textureID = isRecording ? cRecTextureID : cRepTextureID;
+                uint32_t textureID = isRecording ? cRecTextureID : cRepTextureID;
+
                 glBindTexture( GL_TEXTURE_2D, textureGLIDs[textureID] );
                 glBegin( GL_QUADS ); {
                     glTexCoord2f( 0.0f, 0.0f ); glVertex2f( -1.0f + 0.0f, +1.0f - 0.0f ); // UL
                     glTexCoord2f( 0.0f, 1.0f ); glVertex2f( -1.0f + 0.0f, +1.0f - 0.2f ); // BL
                     glTexCoord2f( 1.0f, 1.0f ); glVertex2f( -1.0f + 0.5f, +1.0f - 0.2f ); // BR
                     glTexCoord2f( 1.0f, 0.0f ); glVertex2f( -1.0f + 0.5f, +1.0f - 0.0f ); // UR
+                } glEnd();
+
+                std::snprintf( &textureTexts[cTimeTextureID][0],
+                    csTextureTextCap, isRecording ?
+                    "%1u%010u" : "%05u/%05u",
+                    repFrameIdx, recFrameCount );
+                cGenerateTextTexture( cTimeTextureID, textureColors[textureID], textureTexts[cTimeTextureID] );
+
+                glBindTexture( GL_TEXTURE_2D, textureGLIDs[cTimeTextureID] );
+                glBegin( GL_QUADS ); {
+                    glTexCoord2f( 0.0f, 0.0f ); glVertex2f( +1.0f - 0.6f, +1.0f - 0.0f ); // UL
+                    glTexCoord2f( 0.0f, 1.0f ); glVertex2f( +1.0f - 0.6f, +1.0f - 0.2f ); // BL
+                    glTexCoord2f( 1.0f, 1.0f ); glVertex2f( +1.0f - 0.0f, +1.0f - 0.2f ); // BR
+                    glTexCoord2f( 1.0f, 0.0f ); glVertex2f( +1.0f - 0.0f, +1.0f - 0.0f ); // UR
                 } glEnd();
             }
         } glDisable( GL_TEXTURE_2D );
