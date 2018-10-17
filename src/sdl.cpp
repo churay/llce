@@ -128,6 +128,7 @@ int main() {
 
     /// Generate Graphics Assets ///
 
+#ifdef LLCE_DEBUG
     const static uint32_t csTextureTextCap = 20;
     uint32_t textureGLIDs[] = { 0, 0, 0, 0 };
     uint32_t textureColors[] = { 0xFF0000FF, 0xFF00FF00, 0xFFFF0000 }; // little endian
@@ -173,6 +174,7 @@ int main() {
     for( uint32_t textureIdx = 0; textureIdx < cTextureCount; textureIdx++ ) {
         cGenerateTextTexture( textureIdx, textureColors[textureIdx], textureTexts[textureIdx] );
     }
+#endif
 
     /// Update/Render Loop ///
 
@@ -203,7 +205,9 @@ int main() {
                 SDL_Keycode pressedKey = event.key.keysym.sym;
                 if( pressedKey == SDLK_q ) {
                     isRunning = false;
-                } else if( pressedKey == SDLK_r ) {
+                }
+#ifdef LLCE_DEBUG
+                else if( pressedKey == SDLK_r ) {
                     if( !isRecording ) {
                         recFrameCount = 0;
                         recStateStream.open( cStateFilePath, cIOModeW );
@@ -227,6 +231,7 @@ int main() {
                     }
                     isReplaying = !isReplaying;
                 }
+#endif
             }
         }
 
@@ -280,6 +285,7 @@ int main() {
             renderFunction( state, input );
         } glPopMatrix();
 
+#ifdef LLCE_DEBUG
         glEnable( GL_TEXTURE_2D ); {
             std::snprintf( &textureTexts[cFPSTextureID][0],
                 csTextureTextCap,
@@ -321,6 +327,7 @@ int main() {
                 } glEnd();
             }
         } glDisable( GL_TEXTURE_2D );
+#endif
 
         SDL_GL_SwapWindow( window );
 
