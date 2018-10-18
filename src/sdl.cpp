@@ -235,6 +235,7 @@ int main() {
             }
         }
 
+#ifdef LLCE_DEBUG
         // TODO(JRC): This is a bit weird for replaying because we allow intercepts
         // from any key before replacing all key presses with replay data. This is
         // good in some ways as it allows recordings to be excited, but it does
@@ -270,6 +271,7 @@ int main() {
 
             prevDylibModTime = currDylibModTime;
         }
+#endif
 
         glViewport( 0, 0, windowWidth, windowHeight );
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );

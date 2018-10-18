@@ -88,7 +88,9 @@ int32_t main() {
         tty.read( input->keys );
         if( input->keys[llce::keyboard::keycode::q] ) {
             isRunning = false;
-        } if( input->keys[llce::keyboard::keycode::r] ) {
+        }
+#ifdef LLCE_DEBUG
+        if( input->keys[llce::keyboard::keycode::r] ) {
             if( !isRecording ) {
                 recStateStream.open( cStateFilePath, cIOModeW );
                 recStateStream.write( mem.buffer(), mem.length() );
@@ -110,7 +112,9 @@ int32_t main() {
             }
             isReplaying = !isReplaying;
         }
+#endif
 
+#ifdef LLCE_DEBUG
         // TODO(JRC): This is a bit weird for replaying because we allow intercepts
         // from any key before replacing all key presses with replay data. This is
         // good in some ways as it allows recordings to be excited, but it does
@@ -143,6 +147,7 @@ int32_t main() {
 
             prevDylibModTime = currDylibModTime;
         }
+#endif
 
         state->time = simTimer.tt();
         updateFunction( state, input );
