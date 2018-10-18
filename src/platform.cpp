@@ -127,6 +127,32 @@ bool32_t platform::fileWaitLock( const char8_t* pFilePath ) {
     return waitSuccessful;
 }
 
+bool32_t platform::pathToChild( char8_t* pPath, const char8_t* pChild ) {
+    bool32_t willFullPathFit = strlen( pPath ) + strlen( pChild ) + 1 < MAXPATH_BL;
+
+    LLCE_ASSERT_INFO( willFullPathFit,
+        "Cannot find child `" << pChild << "` of extended path `" << pPath << "`." );
+
+    strcat( pPath, "/" );
+    strcat( pPath, pChild );
+
+    return willFullPathFit;
+}
+
+
+bool32_t platform::pathToParent( char8_t* pPath ) {
+    char8_t* pathItr = nullptr;
+    for( pathItr = pPath + strlen(pPath); pathItr > pPath && *pathItr != '/'; pathItr-- ) {}
+
+    bool32_t hasPathParent = pathItr > pPath;
+    if( hasPathParent ) { *pathItr = '\0'; }
+
+    LLCE_ASSERT_INFO( hasPathParent,
+        "Cannot find parent to invalid path `" << pPath << "`." );
+
+    return hasPathParent;
+}
+
 
 void* platform::dllLoadHandle( const char8_t* pDLLPath ) {
     void* libraryHandle = dlopen( pDLLPath, RTLD_NOW );
@@ -158,6 +184,20 @@ void* platform::dllLoadSymbol( void* pDLLHandle, const char8_t* pDLLSymbol ) {
         "Failed to load symbol `" << pDLLSymbol << "`: " << symbolError );
 
     return symbolFunction;
+}
+
+
+bool32_t platform::exeGetAbsPath( char8_t* pFilePath ) {
+    // TODO(JRC): The given path isn't always guaranteed to have 'MAXPATH_BL'
+    // bytes, so this function should really have either another argument or
+    // intake a special type that guarantees this byte-length.
+    int64_t status = readlink( "/proc/self/exe", pFilePath, MAXPATH_BL );
+
+    LLCE_ASSERT_INFO( status > 0,
+        "Failed to retrieve the absolute path to the running executable; " <<
+        strerror(errno) );
+
+    return status > 0;
 }
 
 

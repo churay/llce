@@ -15,10 +15,14 @@ namespace platform {
     int64_t fileStatModTime( const char8_t* pFilePath );
     bool32_t fileWaitLock( const char8_t* pFilePath );
 
+    bool32_t pathToChild( char8_t* pPath, const char8_t* pChild );
+    bool32_t pathToParent( char8_t* pPath );
+
     void* dllLoadHandle( const char8_t* pDLLPath );
     bool32_t dllUnloadHandle( void* pDLLHandle, const char8_t* pDLLPath );
     void* dllLoadSymbol( void* pDLLHandle, const char8_t* pDLLSymbol );
 
+    bool32_t exeGetAbsPath( char8_t* pFilePath );
     bool32_t libSearchRPath( char8_t* pFileName );
 }
 

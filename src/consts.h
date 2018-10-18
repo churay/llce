@@ -31,10 +31,6 @@ typedef double float64_t;
 // (see: https://unix.stackexchange.com/a/32834)
 #define MAXPATH_BL 4096
 
-// NOTE(JRC): Neat preprocessor trick to detect endianness, courtesy of Eric Raymond:
-// (see: http://esr.ibiblio.org/?p=5095)
-#define IS_BIG_ENDIAN (*(uint16_t *)"\0\xff" < 0x100)
-
 // TODO(JRC): Consider moving these macros to a different module.
 #define LLCE_DYLOAD_API extern "C"
 

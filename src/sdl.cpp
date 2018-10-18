@@ -53,6 +53,15 @@ int main() {
 
     /// Load Dynamic Shared Library ///
 
+    char8_t sdlexeBasePath[MAXPATH_BL]; {
+        LLCE_ASSERT_ERROR( llce::platform::exeGetAbsPath(sdlexeBasePath),
+            "Failed to find path to running executable." );
+        LLCE_ASSERT_ERROR(
+            llce::platform::pathToParent(sdlexeBasePath) &&
+            llce::platform::pathToParent(sdlexeBasePath),
+            "Failed to find base path of running executable '" << sdlexeBasePath << "'." );
+    }
+
     const char8_t* sdllibFileName = "sdllib.so";
     char8_t sdllibFilePath[MAXPATH_BL]; {
         strcpy( sdllibFilePath, sdllibFileName );
@@ -110,14 +119,6 @@ int main() {
     LLCE_ASSERT_ERROR( glcontext != nullptr,
         "SDL failed to generate OpenGL context; " << SDL_GetError() );
 
-    // TODO(JRC): Make this a more reliable path, ideally independent of even
-    // the current working directory.
-    const char8_t* cFontPath = "dat/dejavu_mono.ttf";
-    const int32_t cFontSize = 20;
-    TTF_Font* font = TTF_OpenFont( cFontPath, cFontSize );
-    LLCE_ASSERT_ERROR( font != nullptr,
-        "SDL-TTF failed to create font; " << TTF_GetError() );
-
     { // Configure OpenGL Context //
         glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
         glEnable( GL_BLEND );
@@ -127,6 +128,20 @@ int main() {
     }
 
     /// Generate Graphics Assets ///
+
+    const char8_t* fontFileName = "dejavu_mono.ttf";
+    char8_t fontPath[MAXPATH_BL]; {
+        strcpy( fontPath, sdlexeBasePath );
+        LLCE_ASSERT_ERROR(
+            llce::platform::pathToChild(fontPath, "dat") &&
+            llce::platform::pathToChild(fontPath, fontFileName),
+            "Failed to locate font with file name '" << fontFileName << "'." );
+    }
+
+    const int32_t cFontSize = 20;
+    TTF_Font* font = TTF_OpenFont( fontPath, cFontSize );
+    LLCE_ASSERT_ERROR( font != nullptr,
+        "SDL-TTF failed to create font; " << TTF_GetError() );
 
 #ifdef LLCE_DEBUG
     const static uint32_t csTextureTextCap = 20;
