@@ -53,7 +53,7 @@ int32_t main() {
     // TODO(JRC): Create a function to calculate the full path of the dynamic
     // library so that it can be used easily in all platform functions.
     const char8_t* ttylibFileName = "ttylib.so";
-    char8_t ttylibFilePath[llce::platform::MAX_PATH_BYTES]; {
+    char8_t ttylibFilePath[llce::platform::path::MAX_LENGTH]; {
         strcpy( ttylibFilePath, ttylibFileName );
         LLCE_ASSERT_ERROR( llce::platform::libSearchRPath(ttylibFilePath),
             "Failed to find library " << ttylibFileName << " in dynamic path." );

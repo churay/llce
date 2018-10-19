@@ -15,9 +15,77 @@
 
 namespace llce {
 
-// NOTE(JRC): This is the maximum byte length according to the author of eCryptfs.
-// (see: https://unix.stackexchange.com/a/32834)
-const uint32_t platform::MAX_PATH_BYTES = 4096;
+/// platform::path class ///
+
+platform::path::path() {
+    mLength = 0;
+    mBuffer[mLength] = '\0';
+}
+
+
+platform::path::path( const char8_t* pBuffer ) {
+    uint32_t inLength = 0;
+    for( const char8_t* pItr = pBuffer; *pItr != '\0'; pItr++, inLength++ ) {}
+
+    memcpy( &mBuffer[0], pBuffer, inLength );
+    mLength = inLength;
+    mBuffer[mLength] = '\0';
+}
+
+
+platform::path::operator const char8_t*() {
+    return &mBuffer[0];
+}
+
+
+bool32_t platform::path::up() {
+    bool32_t success = true;
+
+    char8_t* pathItr = nullptr;
+    for( pathItr = &mBuffer[0]; *pathItr != '\0'; pathItr++ ) {}
+    for( ; pathItr > &mBuffer[0] && *pathItr != platform::path::SEP_CHAR; pathItr-- ) {}
+
+    bool32_t hasPathParent = pathItr > &mBuffer[0];
+    success &= hasPathParent;
+    if( !hasPathParent ) {
+        LLCE_ASSERT_INFO( false,
+            "Cannot find parent to invalid path `" << *this << "`." );
+    } else {
+        *pathItr = '\0';
+        mLength = pathItr - &mBuffer[0];
+    }
+
+    return success;
+}
+
+
+bool32_t platform::path::dn( const char8_t* pChild ) {
+    bool32_t success = true;
+
+    uint32_t childLength = 0;
+    for( const char8_t* pItr = pChild; *pItr != '\0'; pItr++, childLength++ ) {}
+
+    bool32_t isPathOverflowed = mLength + childLength + 1 > path::MAX_LENGTH;
+    success &= !isPathOverflowed;
+
+    if( isPathOverflowed ) {
+        LLCE_ASSERT_INFO( false,
+            "Cannot find child `" << pChild << "` of extended path `" << *this << "`." );
+    } else {
+        mBuffer[mLength] = path::SEP_CHAR;
+        memcpy( &mBuffer[mLength + 1], pChild, childLength );
+        mLength += 1 + childLength;
+    }
+
+    return success;
+}
+
+
+bool32_t platform::path::dn( const platform::path& pChild ) {
+    return dn( &pChild.mBuffer[0] );
+}
+
+/// platform functions ///
 
 bit8_t* platform::allocBuffer( uint64_t pBufferLength, bit8_t* pBufferBase ) {
     const int64_t cPermissionFlags = PROT_READ | PROT_WRITE;
@@ -111,7 +179,7 @@ int64_t platform::fileStatModTime( const char8_t* pFilePath ) {
 bool32_t platform::fileWaitLock( const char8_t* pFilePath ) {
     bool32_t waitSuccessful = false;
 
-    char8_t lockFilePath[MAX_PATH_BYTES] = "";
+    char8_t lockFilePath[platform::path::MAX_LENGTH] = "";
     strcpy( lockFilePath, pFilePath );
     strcat( lockFilePath, ".lock" );
 
@@ -129,32 +197,6 @@ bool32_t platform::fileWaitLock( const char8_t* pFilePath ) {
         strerror(errno) );
 
     return waitSuccessful;
-}
-
-bool32_t platform::pathToChild( char8_t* pPath, const char8_t* pChild ) {
-    bool32_t willFullPathFit = strlen( pPath ) + strlen( pChild ) + 1 < MAX_PATH_BYTES;
-
-    LLCE_ASSERT_INFO( willFullPathFit,
-        "Cannot find child `" << pChild << "` of extended path `" << pPath << "`." );
-
-    strcat( pPath, "/" );
-    strcat( pPath, pChild );
-
-    return willFullPathFit;
-}
-
-
-bool32_t platform::pathToParent( char8_t* pPath ) {
-    char8_t* pathItr = nullptr;
-    for( pathItr = pPath + strlen(pPath); pathItr > pPath && *pathItr != '/'; pathItr-- ) {}
-
-    bool32_t hasPathParent = pathItr > pPath;
-    if( hasPathParent ) { *pathItr = '\0'; }
-
-    LLCE_ASSERT_INFO( hasPathParent,
-        "Cannot find parent to invalid path `" << pPath << "`." );
-
-    return hasPathParent;
 }
 
 
@@ -192,7 +234,7 @@ void* platform::dllLoadSymbol( void* pDLLHandle, const char8_t* pDLLSymbol ) {
 
 
 bool32_t platform::exeGetAbsPath( char8_t* pFilePath ) {
-    int64_t status = readlink( "/proc/self/exe", pFilePath, MAX_PATH_BYTES );
+    int64_t status = readlink( "/proc/self/exe", pFilePath, platform::path::MAX_LENGTH );
 
     LLCE_ASSERT_INFO( status > 0,
         "Failed to retrieve the absolute path to the running executable; " <<
@@ -219,7 +261,7 @@ bool32_t platform::libSearchRPath( char8_t* pFileName ) {
         }
     }
 
-    char8_t origFileName[MAX_PATH_BYTES];
+    char8_t origFileName[platform::path::MAX_LENGTH];
     strcpy( origFileName, pFileName );
     strcpy( pFileName, "" );
 

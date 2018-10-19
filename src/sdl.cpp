@@ -53,17 +53,18 @@ int main() {
 
     /// Load Dynamic Shared Library ///
 
-    char8_t sdlexeBasePath[llce::platform::MAX_PATH_BYTES]; {
-        LLCE_ASSERT_ERROR( llce::platform::exeGetAbsPath(sdlexeBasePath),
+    llce::platform::path sdlexeBasePath;
+    char8_t sdlexeFilePath[llce::platform::path::MAX_LENGTH]; {
+        LLCE_ASSERT_ERROR( llce::platform::exeGetAbsPath(sdlexeFilePath),
             "Failed to find path to running executable." );
+        sdlexeBasePath = llce::platform::path( sdlexeFilePath );
         LLCE_ASSERT_ERROR(
-            llce::platform::pathToParent(sdlexeBasePath) &&
-            llce::platform::pathToParent(sdlexeBasePath),
-            "Failed to find base path of running executable '" << sdlexeBasePath << "'." );
+            sdlexeBasePath.up() && sdlexeBasePath.up(),
+            "Failed to find base path of running executable '" << sdlexeFilePath << "'." );
     }
 
     const char8_t* sdllibFileName = "sdllib.so";
-    char8_t sdllibFilePath[llce::platform::MAX_PATH_BYTES]; {
+    char8_t sdllibFilePath[llce::platform::path::MAX_LENGTH]; {
         strcpy( sdllibFilePath, sdllibFileName );
         LLCE_ASSERT_ERROR( llce::platform::libSearchRPath(sdllibFilePath),
             "Failed to find library " << sdllibFileName << " in dynamic path." );
@@ -130,13 +131,10 @@ int main() {
     /// Generate Graphics Assets ///
 
     const char8_t* fontFileName = "dejavu_mono.ttf";
-    char8_t fontPath[llce::platform::MAX_PATH_BYTES]; {
-        strcpy( fontPath, sdlexeBasePath );
-        LLCE_ASSERT_ERROR(
-            llce::platform::pathToChild(fontPath, "dat") &&
-            llce::platform::pathToChild(fontPath, fontFileName),
-            "Failed to locate font with file name '" << fontFileName << "'." );
-    }
+    llce::platform::path fontPath( sdlexeBasePath );
+    LLCE_ASSERT_ERROR(
+        fontPath.dn("dat") && fontPath.dn(fontFileName),
+        "Failed to locate font with file name '" << fontFileName << "'." );
 
     const int32_t cFontSize = 20;
     TTF_Font* font = TTF_OpenFont( fontPath, cFontSize );

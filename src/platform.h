@@ -6,9 +6,38 @@
 namespace llce {
 
 namespace platform {
-    /// Namespace Constants ///
+    /// Namespace Classes ///
 
-    extern const uint32_t MAX_PATH_BYTES;
+    class path {
+        public:
+
+        /// Class Attributes ///
+
+        // NOTE(JRC): This is the maximum byte length according to the author of eCryptfs.
+        // (see: https://unix.stackexchange.com/a/32834)
+        const static uint32_t MAX_LENGTH = 4096;
+        const static char8_t SEP_CHAR = '/';
+
+        /// Constructors ///
+
+        path();
+        path( const char8_t* pBuffer );
+
+        /// Class Functions ///
+
+        operator const char8_t*();
+
+        bool32_t up();
+        bool32_t dn( const char8_t* pChild );
+        bool32_t dn( const path& pChild );
+
+        private:
+
+        /// Class Fields ///
+
+        char8_t mBuffer[MAX_LENGTH];
+        uint32_t mLength;
+    };
 
     /// Namespace Functions ///
 
@@ -18,9 +47,6 @@ namespace platform {
     int64_t fileStatSize( const char8_t* pFilePath );
     int64_t fileStatModTime( const char8_t* pFilePath );
     bool32_t fileWaitLock( const char8_t* pFilePath );
-
-    bool32_t pathToChild( char8_t* pPath, const char8_t* pChild );
-    bool32_t pathToParent( char8_t* pPath );
 
     void* dllLoadHandle( const char8_t* pDLLPath );
     bool32_t dllUnloadHandle( void* pDLLHandle, const char8_t* pDLLPath );
