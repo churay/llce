@@ -53,7 +53,7 @@ int main() {
 
     /// Load Dynamic Shared Library ///
 
-    char8_t sdlexeBasePath[MAXPATH_BL]; {
+    char8_t sdlexeBasePath[llce::platform::MAX_PATH_BYTES]; {
         LLCE_ASSERT_ERROR( llce::platform::exeGetAbsPath(sdlexeBasePath),
             "Failed to find path to running executable." );
         LLCE_ASSERT_ERROR(
@@ -63,7 +63,7 @@ int main() {
     }
 
     const char8_t* sdllibFileName = "sdllib.so";
-    char8_t sdllibFilePath[MAXPATH_BL]; {
+    char8_t sdllibFilePath[llce::platform::MAX_PATH_BYTES]; {
         strcpy( sdllibFilePath, sdllibFileName );
         LLCE_ASSERT_ERROR( llce::platform::libSearchRPath(sdllibFilePath),
             "Failed to find library " << sdllibFileName << " in dynamic path." );
@@ -130,7 +130,7 @@ int main() {
     /// Generate Graphics Assets ///
 
     const char8_t* fontFileName = "dejavu_mono.ttf";
-    char8_t fontPath[MAXPATH_BL]; {
+    char8_t fontPath[llce::platform::MAX_PATH_BYTES]; {
         strcpy( fontPath, sdlexeBasePath );
         LLCE_ASSERT_ERROR(
             llce::platform::pathToChild(fontPath, "dat") &&
@@ -161,6 +161,15 @@ int main() {
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER );
     }
 
+    // NOTE(JRC): This method for generating textures is expedient in terms of
+    // development time, but suboptimal in terms of performance. Every time a texture
+    // is generated using this function, the SDL library allocates memory into
+    // dynamically allocated buffers, which are immediately freed after this data
+    // is stored in memory. Since the texture buffers are all statically sizes, it
+    // would be ideal if the same, statically allocated arrays were filled in this
+    // method, but customizing memory allocations for SDL isn't easy to do. For a
+    // performance-level texture generation method, watch the "Handmade Hero" tutorials
+    // on OpenGL texturing and font APIs.
     const auto cGenerateTextTexture = [ &textureGLIDs, &font ]
             ( const uint32_t textureID, const uint32_t textureColor, const char8_t* textureText ) {
         const uint32_t& textureGLID = textureGLIDs[textureID];

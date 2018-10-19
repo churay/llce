@@ -6,6 +6,10 @@
 namespace llce {
 
 namespace platform {
+    /// Namespace Constants ///
+
+    extern const uint32_t MAX_PATH_BYTES;
+
     /// Namespace Functions ///
 
     bit8_t* allocBuffer( uint64_t pBufferLength, bit8_t* pBufferStart = nullptr );

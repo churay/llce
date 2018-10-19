@@ -27,10 +27,6 @@ typedef double float64_t;
 #define GIGABYTE_BL(v) (MEGABYTE_BL(v)*1024)
 #define TERABYTE_BL(v) (GIGABYTE_BL(v)*1024)
 
-// NOTE(JRC): This is the maximum byte length according to the author of eCryptfs.
-// (see: https://unix.stackexchange.com/a/32834)
-#define MAXPATH_BL 4096
-
 // TODO(JRC): Consider moving these macros to a different module.
 #define LLCE_DYLOAD_API extern "C"
 

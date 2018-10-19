@@ -15,6 +15,10 @@
 
 namespace llce {
 
+// NOTE(JRC): This is the maximum byte length according to the author of eCryptfs.
+// (see: https://unix.stackexchange.com/a/32834)
+const uint32_t platform::MAX_PATH_BYTES = 4096;
+
 bit8_t* platform::allocBuffer( uint64_t pBufferLength, bit8_t* pBufferBase ) {
     const int64_t cPermissionFlags = PROT_READ | PROT_WRITE;
     const int64_t cAllocFlags = MAP_ANONYMOUS | MAP_PRIVATE |
@@ -107,7 +111,7 @@ int64_t platform::fileStatModTime( const char8_t* pFilePath ) {
 bool32_t platform::fileWaitLock( const char8_t* pFilePath ) {
     bool32_t waitSuccessful = false;
 
-    char8_t lockFilePath[MAXPATH_BL] = "";
+    char8_t lockFilePath[MAX_PATH_BYTES] = "";
     strcpy( lockFilePath, pFilePath );
     strcat( lockFilePath, ".lock" );
 
@@ -128,7 +132,7 @@ bool32_t platform::fileWaitLock( const char8_t* pFilePath ) {
 }
 
 bool32_t platform::pathToChild( char8_t* pPath, const char8_t* pChild ) {
-    bool32_t willFullPathFit = strlen( pPath ) + strlen( pChild ) + 1 < MAXPATH_BL;
+    bool32_t willFullPathFit = strlen( pPath ) + strlen( pChild ) + 1 < MAX_PATH_BYTES;
 
     LLCE_ASSERT_INFO( willFullPathFit,
         "Cannot find child `" << pChild << "` of extended path `" << pPath << "`." );
@@ -188,10 +192,7 @@ void* platform::dllLoadSymbol( void* pDLLHandle, const char8_t* pDLLSymbol ) {
 
 
 bool32_t platform::exeGetAbsPath( char8_t* pFilePath ) {
-    // TODO(JRC): The given path isn't always guaranteed to have 'MAXPATH_BL'
-    // bytes, so this function should really have either another argument or
-    // intake a special type that guarantees this byte-length.
-    int64_t status = readlink( "/proc/self/exe", pFilePath, MAXPATH_BL );
+    int64_t status = readlink( "/proc/self/exe", pFilePath, MAX_PATH_BYTES );
 
     LLCE_ASSERT_INFO( status > 0,
         "Failed to retrieve the absolute path to the running executable; " <<
@@ -218,7 +219,7 @@ bool32_t platform::libSearchRPath( char8_t* pFileName ) {
         }
     }
 
-    char8_t origFileName[MAXPATH_BL];
+    char8_t origFileName[MAX_PATH_BYTES];
     strcpy( origFileName, pFileName );
     strcpy( pFileName, "" );
 
