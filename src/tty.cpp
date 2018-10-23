@@ -48,31 +48,26 @@ int32_t main() {
 
     /// Load Dynamic Shared Library ///
 
-    // TODO(JRC): Fix the calls to the 'stat' function so that they use the path
-    // relative to the executable instead of the path relative to the run directory.
-    // TODO(JRC): Create a function to calculate the full path of the dynamic
-    // library so that it can be used easily in all platform functions.
-    const char8_t* ttylibFileName = "ttylib.so";
-    char8_t ttylibFilePath[llce::platform::path::MAX_LENGTH]; {
-        strcpy( ttylibFilePath, ttylibFileName );
-        LLCE_ASSERT_ERROR( llce::platform::libSearchRPath(ttylibFilePath),
-            "Failed to find library " << ttylibFileName << " in dynamic path." );
-    }
+    const char8_t* ttyLibFileName = "ttylib.so";
+    llce::platform::path ttyLibPath = llce::platform::path::toDynamicLib( ttyLibFileName );
+    LLCE_ASSERT_ERROR( ttyLibPath.exists(),
+        "Failed to find library " << ttyLibFileName << " in dynamic path." );
+    llce::platform::path ttyLibLockPath = ttyLibPath.lock();
 
-    void* ttylibHandle = llce::platform::dllLoadHandle( ttylibFileName );
-    void* updateSymbol = llce::platform::dllLoadSymbol( ttylibHandle, "update" );
-    void* renderSymbol = llce::platform::dllLoadSymbol( ttylibHandle, "render" );
+    void* ttyLibHandle = llce::platform::dllLoadHandle( ttyLibPath );
+    void* updateSymbol = llce::platform::dllLoadSymbol( ttyLibHandle, "update" );
+    void* renderSymbol = llce::platform::dllLoadSymbol( ttyLibHandle, "render" );
     LLCE_ASSERT_ERROR(
-        ttylibHandle != nullptr && updateSymbol != nullptr && renderSymbol != nullptr,
-        "Couldn't load library `" << ttylibFileName << "` symbols on initialize." );
+        ttyLibHandle != nullptr && updateSymbol != nullptr && renderSymbol != nullptr,
+        "Couldn't load library `" << ttyLibFileName << "` symbols on initialize." );
 
     update_f updateFunction = (update_f)updateSymbol;
     render_f renderFunction = (render_f)renderSymbol;
 
     int64_t prevDylibModTime, currDylibModTime;
     LLCE_ASSERT_ERROR(
-        prevDylibModTime = currDylibModTime = llce::platform::fileStatModTime(ttylibFilePath),
-        "Couldn't load library `" << ttylibFileName << "` stat data on initialize." );
+        prevDylibModTime = currDylibModTime = ttyLibPath.modtime(),
+        "Couldn't load library `" << ttyLibFileName << "` stat data on initialize." );
 
     /// Update Application ///
 
@@ -131,18 +126,18 @@ int32_t main() {
         }
 
         LLCE_ASSERT_ERROR(
-            currDylibModTime = llce::platform::fileStatModTime(ttylibFilePath),
-            "Couldn't load library `" << ttylibFileName << "` stat data on step." );
+            currDylibModTime = ttyLibPath.modtime(),
+            "Couldn't load library `" << ttyLibFileName << "` stat data on step." );
         if( currDylibModTime != prevDylibModTime ) {
-            llce::platform::fileWaitLock( ttylibFilePath );
+            ttyLibLockPath.wait();
 
-            llce::platform::dllUnloadHandle( ttylibHandle, ttylibFileName );
-            ttylibHandle = llce::platform::dllLoadHandle( ttylibFileName );
-            updateFunction = (update_f)llce::platform::dllLoadSymbol( ttylibHandle, "update" );
-            renderFunction = (render_f)llce::platform::dllLoadSymbol( ttylibHandle, "render" );
+            llce::platform::dllUnloadHandle( ttyLibHandle, ttyLibFileName );
+            ttyLibHandle = llce::platform::dllLoadHandle( ttyLibFileName );
+            updateFunction = (update_f)llce::platform::dllLoadSymbol( ttyLibHandle, "update" );
+            renderFunction = (render_f)llce::platform::dllLoadSymbol( ttyLibHandle, "render" );
             LLCE_ASSERT_ERROR(
-                ttylibHandle != nullptr && updateFunction != nullptr && renderFunction != nullptr,
-                "Couldn't load library `" << ttylibFileName << "` symbols at " <<
+                ttyLibHandle != nullptr && updateFunction != nullptr && renderFunction != nullptr,
+                "Couldn't load library `" << ttyLibFileName << "` symbols at " <<
                 "simulation time " << simTimer.tt() << "." );
 
             prevDylibModTime = currDylibModTime;

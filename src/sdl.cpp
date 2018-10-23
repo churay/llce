@@ -53,37 +53,33 @@ int main() {
 
     /// Load Dynamic Shared Library ///
 
-    llce::platform::path sdlexeBasePath;
-    char8_t sdlexeFilePath[llce::platform::path::MAX_LENGTH]; {
-        LLCE_ASSERT_ERROR( llce::platform::exeGetAbsPath(sdlexeFilePath),
-            "Failed to find path to running executable." );
-        sdlexeBasePath = llce::platform::path( sdlexeFilePath );
-        LLCE_ASSERT_ERROR(
-            sdlexeBasePath.up() && sdlexeBasePath.up(),
-            "Failed to find base path of running executable '" << sdlexeFilePath << "'." );
-    }
+    llce::platform::path sdlExePath = llce::platform::path::toRunningExe();
+    LLCE_ASSERT_ERROR( sdlExePath.exists(),
+        "Failed to find path to running executable." );
+    llce::platform::path sdlProjPath = sdlExePath;
+    LLCE_ASSERT_ERROR( sdlProjPath.up() && sdlProjPath.up() && sdlProjPath.exists(),
+        "Failed to find path to running executable." );
 
-    const char8_t* sdllibFileName = "sdllib.so";
-    char8_t sdllibFilePath[llce::platform::path::MAX_LENGTH]; {
-        strcpy( sdllibFilePath, sdllibFileName );
-        LLCE_ASSERT_ERROR( llce::platform::libSearchRPath(sdllibFilePath),
-            "Failed to find library " << sdllibFileName << " in dynamic path." );
-    }
+    const char8_t* sdlLibFileName = "sdllib.so";
+    llce::platform::path sdlLibPath = llce::platform::path::toDynamicLib( sdlLibFileName );
+    LLCE_ASSERT_ERROR( sdlLibPath.exists(),
+        "Failed to find library " << sdlLibFileName << " in dynamic path." );
+    llce::platform::path sdlLibLockPath = sdlLibPath.lock();
 
-    void* sdllibHandle = llce::platform::dllLoadHandle( sdllibFileName );
-    void* updateSymbol = llce::platform::dllLoadSymbol( sdllibHandle, "update" );
-    void* renderSymbol = llce::platform::dllLoadSymbol( sdllibHandle, "render" );
+    void* sdlLibHandle = llce::platform::dllLoadHandle( sdlLibPath );
+    void* updateSymbol = llce::platform::dllLoadSymbol( sdlLibHandle, "update" );
+    void* renderSymbol = llce::platform::dllLoadSymbol( sdlLibHandle, "render" );
     LLCE_ASSERT_ERROR(
-        sdllibHandle != nullptr && updateSymbol != nullptr && renderSymbol != nullptr,
-        "Couldn't load library `" << sdllibFileName << "` symbols on initialize." );
+        sdlLibHandle != nullptr && updateSymbol != nullptr && renderSymbol != nullptr,
+        "Couldn't load library `" << sdlLibFileName << "` symbols on initialize." );
 
     update_f updateFunction = (update_f)updateSymbol;
     render_f renderFunction = (render_f)renderSymbol;
 
     int64_t prevDylibModTime, currDylibModTime;
     LLCE_ASSERT_ERROR(
-        prevDylibModTime = currDylibModTime = llce::platform::fileStatModTime(sdllibFilePath),
-        "Couldn't load library `" << sdllibFileName << "` stat data on initialize." );
+        prevDylibModTime = currDylibModTime = sdlLibPath.modtime(),
+        "Couldn't load library `" << sdlLibFileName << "` stat data on initialize." );
 
     /// Initialize Windows/Graphics ///
 
@@ -131,7 +127,7 @@ int main() {
     /// Generate Graphics Assets ///
 
     const char8_t* fontFileName = "dejavu_mono.ttf";
-    llce::platform::path fontPath( sdlexeBasePath );
+    llce::platform::path fontPath( sdlProjPath );
     LLCE_ASSERT_ERROR(
         fontPath.dn("dat") && fontPath.dn(fontFileName),
         "Failed to locate font with file name '" << fontFileName << "'." );
@@ -277,18 +273,18 @@ int main() {
         }
 
         LLCE_ASSERT_ERROR(
-            currDylibModTime = llce::platform::fileStatModTime(sdllibFilePath),
-            "Couldn't load library `" << sdllibFileName << "` stat data on step." );
+            currDylibModTime = sdlLibPath.modtime(),
+            "Couldn't load library `" << sdlLibFileName << "` stat data on step." );
         if( currDylibModTime != prevDylibModTime ) {
-            llce::platform::fileWaitLock( sdllibFilePath );
+            sdlLibLockPath.wait();
 
-            llce::platform::dllUnloadHandle( sdllibHandle, sdllibFileName );
-            sdllibHandle = llce::platform::dllLoadHandle( sdllibFileName );
-            updateFunction = (update_f)llce::platform::dllLoadSymbol( sdllibHandle, "update" );
-            renderFunction = (render_f)llce::platform::dllLoadSymbol( sdllibHandle, "render" );
+            llce::platform::dllUnloadHandle( sdlLibHandle, sdlLibFileName );
+            sdlLibHandle = llce::platform::dllLoadHandle( sdlLibFileName );
+            updateFunction = (update_f)llce::platform::dllLoadSymbol( sdlLibHandle, "update" );
+            renderFunction = (render_f)llce::platform::dllLoadSymbol( sdlLibHandle, "render" );
             LLCE_ASSERT_ERROR(
-                sdllibHandle != nullptr && updateFunction != nullptr && renderFunction != nullptr,
-                "Couldn't load library `" << sdllibFileName << "` symbols at " <<
+                sdlLibHandle != nullptr && updateFunction != nullptr && renderFunction != nullptr,
+                "Couldn't load library `" << sdlLibFileName << "` symbols at " <<
                 "simulation time " << simTimer.tt() << "." );
 
             prevDylibModTime = currDylibModTime;

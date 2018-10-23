@@ -49,7 +49,7 @@ bool32_t platform::path::up() {
     success &= hasPathParent;
     if( !hasPathParent ) {
         LLCE_ASSERT_INFO( false,
-            "Cannot find parent to invalid path `" << *this << "`." );
+            "Cannot find parent to invalid path `" << &mBuffer[0] << "`." );
     } else {
         *pathItr = '\0';
         mLength = pathItr - &mBuffer[0];
@@ -70,7 +70,7 @@ bool32_t platform::path::dn( const char8_t* pChild ) {
 
     if( isPathOverflowed ) {
         LLCE_ASSERT_INFO( false,
-            "Cannot find child `" << pChild << "` of extended path `" << *this << "`." );
+            "Cannot find child `" << pChild << "` of extended path `" << &mBuffer[0] << "`." );
     } else {
         mBuffer[mLength] = path::SEP_CHAR;
         memcpy( &mBuffer[mLength + 1], pChild, childLength );
@@ -81,8 +81,143 @@ bool32_t platform::path::dn( const char8_t* pChild ) {
 }
 
 
-bool32_t platform::path::dn( const platform::path& pChild ) {
-    return dn( &pChild.mBuffer[0] );
+bool32_t platform::path::exists() const {
+    return !access( &mBuffer[0], F_OK );
+}
+
+
+int64_t platform::path::size() const {
+    int64_t fileSize = 0;
+
+    // NOTE(JRC): According to the Unix documentation, the 'off_t' type is
+    // flexible, but should be some form of signed integer.
+    // (see: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/sys_types.h.html#tag_13_67)
+    struct stat fileStatus;
+    if( !stat(&mBuffer[0], &fileStatus) ) {
+        fileSize = static_cast<int64_t>( fileStatus.st_size );
+    }
+
+    LLCE_ASSERT_INFO( fileSize > 0,
+        "Failed to read size of file " << &mBuffer[0] << "; " <<
+        strerror(errno) );
+
+    return fileSize;
+}
+
+
+int64_t platform::path::modtime() const {
+    int64_t fileModTime = 0;
+
+    // NOTE(JRC): According to the C++ documentation, the 'time_t' type is
+    // defined to be a 32-bit signed integer by most Unix implementations.
+    // (see: http://en.cppreference.com/w/c/chrono/time)
+    struct stat fileStatus;
+    if( !stat(&mBuffer[0], &fileStatus) ) {
+        fileModTime = static_cast<int64_t>( fileStatus.st_mtime );
+    }
+
+    LLCE_ASSERT_INFO( fileModTime > 0,
+        "Failed to read mod time of file at path " << &mBuffer[0] << "; " <<
+        strerror(errno) );
+
+    return fileModTime;
+}
+
+
+bool32_t platform::path::wait() const {
+    bool32_t waitSuccessful = false;
+
+    int32_t fileHandle;
+    if( (fileHandle = open(&mBuffer[0], O_RDWR)) >= 0 ) {
+        // NOTE(JRC): The 'flock' function will block on a file if it has been
+        // f'locked by another process; it's used here to wait on the flock and
+        // then immediately continue processing.
+        waitSuccessful = !flock( fileHandle, LOCK_EX ) && !flock( fileHandle, LOCK_UN );
+        waitSuccessful &= !close( fileHandle );
+    }
+
+    LLCE_ASSERT_INFO( waitSuccessful,
+        "Failed to pwait for file at path " << &mBuffer[0] << "; " <<
+        strerror(errno) );
+
+    return waitSuccessful;
+}
+
+
+platform::path platform::path::lock() const {
+    const char8_t* lockSuffix = ".lock";
+
+    path lockPath = *this;
+    for( const char8_t* pItr = lockSuffix; *pItr != '\0'; pItr++ ) {
+        lockPath.mBuffer[lockPath.mLength++] = *pItr;
+    }
+    lockPath.mBuffer[lockPath.mLength] = '\0';
+
+    return lockPath;
+}
+
+
+platform::path platform::path::toRunningExe() {
+    path exePath;
+    int64_t status = readlink( "/proc/self/exe", &exePath.mBuffer[0],
+        platform::path::MAX_LENGTH );
+
+    if( status <= 0 ) {
+        exePath.mBuffer[0] = '\0';
+        exePath.mLength = 0;
+        LLCE_ASSERT_INFO( false,
+            "Failed to retrieve the path to the running executable; " <<
+            strerror(errno) );
+    } else {
+        exePath.mLength = status;
+    }
+
+    return exePath;
+}
+
+
+platform::path platform::path::toDynamicLib( const char8_t* pLibName ) {
+    path libPath;
+
+    // NOTE(JRC): The contents of this function heavily reference the system
+    // implementation of the '<link.h>' dependency, which defines the C data
+    // structures that interface with dynamic library symbol tables.
+    // TODO(JRC): Extend this solution so that it loads using 'DT_RUNPATH' and
+    // '$ORIGIN' like the built-in Unix run-time loading mechanism does.
+    const char8_t* procStringTable = nullptr;
+    int32_t procRPathOffset = -1;
+
+    for( const ElfW(Dyn)* dylibIter = _DYNAMIC; dylibIter->d_tag != DT_NULL; ++dylibIter ) {
+        if( dylibIter->d_tag == DT_STRTAB ) {
+            procStringTable = (const char8_t*)( dylibIter->d_un.d_val );
+        } else if( dylibIter->d_tag == DT_RPATH ) {
+            procRPathOffset = (int32_t)( dylibIter->d_un.d_val );
+        }
+    }
+
+    const char8_t* procRPath = ( procStringTable != nullptr && procRPathOffset >= 0 ) ?
+        procStringTable + procRPathOffset : nullptr;
+    for( const char8_t* pathIter = procRPath;
+            pathIter != nullptr && *pathIter != '\0' && !libPath.exists();
+            pathIter = strchr(pathIter, ':') ) {
+        libPath.mLength = 0;
+
+        for( const char8_t* pItr = pathIter; *pItr != '\0'; pItr++ ) {
+            libPath.mBuffer[libPath.mLength++] = *pItr;
+        }
+        libPath.mBuffer[libPath.mLength++] = platform::path::SEP_CHAR;
+        for( const char8_t* pItr = pLibName; *pItr != '\0'; pItr++ ) {
+            libPath.mBuffer[libPath.mLength++] = *pItr;
+        }
+
+        libPath.mBuffer[libPath.mLength] = '\0';
+    }
+
+    LLCE_ASSERT_INFO( libPath.exists(),
+        "Failed to find `" << pLibName << "` in the executable's dynamic path; " <<
+        strerror(errno) );
+
+    return libPath;
 }
 
 /// platform functions ///
@@ -138,68 +273,6 @@ bool32_t platform::deallocBuffer( bit8_t* pBuffer, uint64_t pBufferLength ) {
 }
 
 
-int64_t platform::fileStatSize( const char8_t* pFilePath ) {
-    int64_t fileSize = 0;
-
-    // NOTE(JRC): According to the Unix documentation, the 'off_t' type is
-    // flexible, but should be some form of signed integer.
-    // (see: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/sys_types.h.html#tag_13_67)
-    struct stat fileStatus;
-    if( !stat(pFilePath, &fileStatus) ) {
-        fileSize = static_cast<int64_t>( fileStatus.st_size );
-    }
-
-    LLCE_ASSERT_INFO( fileSize > 0,
-        "Failed to properly read size of file at path " << pFilePath << "; " <<
-        strerror(errno) );
-
-    return fileSize;
-}
-
-
-int64_t platform::fileStatModTime( const char8_t* pFilePath ) {
-    int64_t fileModTime = 0;
-
-    // NOTE(JRC): According to the C++ documentation, the 'time_t' type is
-    // defined to be a 32-bit signed integer by most Unix implementations.
-    // (see: http://en.cppreference.com/w/c/chrono/time)
-    struct stat fileStatus;
-    if( !stat(pFilePath, &fileStatus) ) {
-        fileModTime = static_cast<int64_t>( fileStatus.st_mtime );
-    }
-
-    LLCE_ASSERT_INFO( fileModTime > 0,
-        "Failed to properly read mod time of file at path " << pFilePath << "; " <<
-        strerror(errno) );
-
-    return fileModTime;
-}
-
-
-bool32_t platform::fileWaitLock( const char8_t* pFilePath ) {
-    bool32_t waitSuccessful = false;
-
-    char8_t lockFilePath[platform::path::MAX_LENGTH] = "";
-    strcpy( lockFilePath, pFilePath );
-    strcat( lockFilePath, ".lock" );
-
-    int32_t lockFileHandle;
-    if( (lockFileHandle = open(lockFilePath, O_RDWR)) >= 0 ) {
-        // NOTE(JRC): The 'flock' function will block on a file if it has been
-        // f'locked by another process; it's used here to wait on the flock and
-        // then immediately continue processing.
-        waitSuccessful = !flock( lockFileHandle, LOCK_EX ) && !flock( lockFileHandle, LOCK_UN );
-        waitSuccessful &= !close( lockFileHandle );
-    }
-
-    LLCE_ASSERT_INFO( waitSuccessful,
-        "Failed to properly wait for file at path " << pFilePath << "; " <<
-        strerror(errno) );
-
-    return waitSuccessful;
-}
-
-
 void* platform::dllLoadHandle( const char8_t* pDLLPath ) {
     void* libraryHandle = dlopen( pDLLPath, RTLD_NOW );
     const char8_t* libraryError = dlerror();
@@ -230,55 +303,6 @@ void* platform::dllLoadSymbol( void* pDLLHandle, const char8_t* pDLLSymbol ) {
         "Failed to load symbol `" << pDLLSymbol << "`: " << symbolError );
 
     return symbolFunction;
-}
-
-
-bool32_t platform::exeGetAbsPath( char8_t* pFilePath ) {
-    int64_t status = readlink( "/proc/self/exe", pFilePath, platform::path::MAX_LENGTH );
-
-    LLCE_ASSERT_INFO( status > 0,
-        "Failed to retrieve the absolute path to the running executable; " <<
-        strerror(errno) );
-
-    return status > 0;
-}
-
-
-bool32_t platform::libSearchRPath( char8_t* pFileName ) {
-    // NOTE(JRC): The contents of this function heavily reference the system
-    // implementation of the '<link.h>' dependency, which defines the C data
-    // structures that interface with dynamic library symbol tables.
-    // TODO(JRC): Extend this solution so that it loads using 'DT_RUNPATH' and
-    // '$ORIGIN' like the built-in Unix run-time loading mechanism does.
-    const char8_t* procStringTable = nullptr;
-    int32_t procRPathOffset = -1;
-
-    for( const ElfW(Dyn)* dylibIter = _DYNAMIC; dylibIter->d_tag != DT_NULL; ++dylibIter ) {
-        if( dylibIter->d_tag == DT_STRTAB ) {
-            procStringTable = (const char8_t*)( dylibIter->d_un.d_val );
-        } else if( dylibIter->d_tag == DT_RPATH ) {
-            procRPathOffset = (int32_t)( dylibIter->d_un.d_val );
-        }
-    }
-
-    char8_t origFileName[platform::path::MAX_LENGTH];
-    strcpy( origFileName, pFileName );
-    strcpy( pFileName, "" );
-
-    if( procStringTable != nullptr && procRPathOffset >= 0 ) {
-        const char8_t* procRPath = procStringTable + procRPathOffset;
-
-        for( const char8_t* pathIter = procRPath; *pathIter != '\0'; pathIter = strchr(pathIter, ':') ) {
-            strcat( pFileName, pathIter );
-            strcat( pFileName, "/" );
-            strcat( pFileName, origFileName );
-
-            if( !access(pFileName, F_OK) ) { break; }
-            else { strcpy( pFileName, "" ); }
-        }
-    }
-
-    return strlen( pFileName ) != 0;
 }
 
 }

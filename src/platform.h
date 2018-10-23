@@ -23,13 +23,29 @@ namespace platform {
         path();
         path( const char8_t* pBuffer );
 
-        /// Class Functions ///
+        /// Conversions ///
 
         operator const char8_t*();
 
+        /// Class Functions ///
+
         bool32_t up();
         bool32_t dn( const char8_t* pChild );
-        bool32_t dn( const path& pChild );
+
+        bool32_t exists() const;
+        int64_t size() const;
+        int64_t modtime() const;
+
+        path lock() const;
+        bool32_t wait() const;
+
+        // TODO(JRC): This is a really suboptimal place for these functions, but
+        // it's the only place they can exist while freely accessing member
+        // variables of the 'path' class. Ultimately, this should either become
+        // a struct or some other solution for 'friending' these functions needs
+        // to be discovered.
+        static path toRunningExe();
+        static path toDynamicLib( const char8_t* pLibName );
 
         private:
 
@@ -44,16 +60,9 @@ namespace platform {
     bit8_t* allocBuffer( uint64_t pBufferLength, bit8_t* pBufferStart = nullptr );
     bool32_t deallocBuffer( bit8_t* pBuffer, uint64_t pBufferLength );
 
-    int64_t fileStatSize( const char8_t* pFilePath );
-    int64_t fileStatModTime( const char8_t* pFilePath );
-    bool32_t fileWaitLock( const char8_t* pFilePath );
-
     void* dllLoadHandle( const char8_t* pDLLPath );
     bool32_t dllUnloadHandle( void* pDLLHandle, const char8_t* pDLLPath );
     void* dllLoadSymbol( void* pDLLHandle, const char8_t* pDLLSymbol );
-
-    bool32_t exeGetAbsPath( char8_t* pFilePath );
-    bool32_t libSearchRPath( char8_t* pFileName );
 }
 
 }
