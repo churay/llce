@@ -11,6 +11,7 @@
 
 #include "timer.h"
 #include "memory.h"
+#include "path.h"
 #include "platform.h"
 #include "consts.h"
 
@@ -53,7 +54,7 @@ int main() {
 
     /// Load Dynamic Shared Library ///
 
-    llce::platform::path sdlExePath = llce::platform::path::toRunningExe();
+    llce::platform::path sdlExePath = llce::platform::exeBasePath();
     LLCE_ASSERT_ERROR( sdlExePath.exists(),
         "Failed to find path to running executable." );
     llce::platform::path sdlProjPath = sdlExePath;
@@ -61,10 +62,10 @@ int main() {
         "Failed to find path to running executable." );
 
     const char8_t* sdlLibFileName = "sdllib.so";
-    llce::platform::path sdlLibPath = llce::platform::path::toDynamicLib( sdlLibFileName );
+    llce::platform::path sdlLibPath = llce::platform::libFindDLLPath( sdlLibFileName );
     LLCE_ASSERT_ERROR( sdlLibPath.exists(),
         "Failed to find library " << sdlLibFileName << " in dynamic path." );
-    llce::platform::path sdlLibLockPath = sdlLibPath.lock();
+    llce::platform::path sdlLibLockPath = llce::platform::pathLockPath( sdlLibFileName );
 
     void* sdlLibHandle = llce::platform::dllLoadHandle( sdlLibPath );
     void* updateSymbol = llce::platform::dllLoadSymbol( sdlLibHandle, "update" );

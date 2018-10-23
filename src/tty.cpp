@@ -8,6 +8,7 @@
 #include "memory.h"
 #include "timer.h"
 #include "keyboard.h"
+#include "path.h"
 #include "platform.h"
 #include "consts.h"
 
@@ -49,10 +50,10 @@ int32_t main() {
     /// Load Dynamic Shared Library ///
 
     const char8_t* ttyLibFileName = "ttylib.so";
-    llce::platform::path ttyLibPath = llce::platform::path::toDynamicLib( ttyLibFileName );
+    llce::platform::path ttyLibPath = llce::platform::libFindDLLPath( ttyLibFileName );
     LLCE_ASSERT_ERROR( ttyLibPath.exists(),
         "Failed to find library " << ttyLibFileName << " in dynamic path." );
-    llce::platform::path ttyLibLockPath = ttyLibPath.lock();
+    llce::platform::path ttyLibLockPath = llce::platform::pathLockPath( ttyLibPath );
 
     void* ttyLibHandle = llce::platform::dllLoadHandle( ttyLibPath );
     void* updateSymbol = llce::platform::dllLoadSymbol( ttyLibHandle, "update" );
