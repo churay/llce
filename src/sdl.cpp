@@ -18,6 +18,7 @@
 typedef void (*update_f)( sdllib::state*, sdllib::input* );
 typedef void (*render_f)( const sdllib::state*, const sdllib::input* );
 typedef std::ios_base::openmode ioflag_t;
+typedef llce::platform::path path_t;
 
 int main() {
     /// Initialize Application Memory/State ///
@@ -43,7 +44,6 @@ int main() {
     }
 
     std::fstream recStateStream, recInputStream;
-    const char8_t* cStateFilePath = "out/sdl_state.dat", * cInputFilePath = "out/sdl_input.dat";
     const ioflag_t cIOModeR = std::fstream::binary | std::fstream::in;
     const ioflag_t cIOModeW = std::fstream::binary | std::fstream::out | std::fstream::trunc;
 
@@ -52,35 +52,41 @@ int main() {
     sdllib::input rawInput;
     sdllib::input* input = &rawInput;
 
+    /// Find Project Paths ///
+
+    const path_t cExePath = llce::platform::exeBasePath();
+    LLCE_ASSERT_ERROR( cExePath.exists(),
+        "Failed to find path to running executable." );
+
+    const path_t cProjPath( 3, cExePath.cstr(), nullptr, nullptr );
+    LLCE_ASSERT_ERROR( cProjPath.exists(),
+        "Failed to find path to running executable." );
+
+    const path_t cStateFilePath( 3, cProjPath.cstr(), "out", "sdl_state.dat" );
+    const path_t cInputFilePath( 3, cProjPath.cstr(), "out", "sdl_input.dat" );
+
     /// Load Dynamic Shared Library ///
 
-    llce::platform::path sdlExePath = llce::platform::exeBasePath();
-    LLCE_ASSERT_ERROR( sdlExePath.exists(),
-        "Failed to find path to running executable." );
-    llce::platform::path sdlProjPath = sdlExePath;
-    LLCE_ASSERT_ERROR( sdlProjPath.up() && sdlProjPath.up() && sdlProjPath.exists(),
-        "Failed to find path to running executable." );
+    const char8_t* cDLLFileName = "sdllib.so";
+    const path_t cDLLPath = llce::platform::libFindDLLPath( cDLLFileName );
+    LLCE_ASSERT_ERROR( cDLLPath.exists(),
+        "Failed to find library " << cDLLFileName << " in dynamic path." );
+    const path_t cDLLLockPath = llce::platform::pathLockPath( cDLLFileName );
 
-    const char8_t* sdlLibFileName = "sdllib.so";
-    llce::platform::path sdlLibPath = llce::platform::libFindDLLPath( sdlLibFileName );
-    LLCE_ASSERT_ERROR( sdlLibPath.exists(),
-        "Failed to find library " << sdlLibFileName << " in dynamic path." );
-    llce::platform::path sdlLibLockPath = llce::platform::pathLockPath( sdlLibFileName );
-
-    void* sdlLibHandle = llce::platform::dllLoadHandle( sdlLibPath );
+    void* sdlLibHandle = llce::platform::dllLoadHandle( cDLLPath );
     void* updateSymbol = llce::platform::dllLoadSymbol( sdlLibHandle, "update" );
     void* renderSymbol = llce::platform::dllLoadSymbol( sdlLibHandle, "render" );
     LLCE_ASSERT_ERROR(
         sdlLibHandle != nullptr && updateSymbol != nullptr && renderSymbol != nullptr,
-        "Couldn't load library `" << sdlLibFileName << "` symbols on initialize." );
+        "Couldn't load library `" << cDLLFileName << "` symbols on initialize." );
 
     update_f updateFunction = (update_f)updateSymbol;
     render_f renderFunction = (render_f)renderSymbol;
 
     int64_t prevDylibModTime, currDylibModTime;
     LLCE_ASSERT_ERROR(
-        prevDylibModTime = currDylibModTime = sdlLibPath.modtime(),
-        "Couldn't load library `" << sdlLibFileName << "` stat data on initialize." );
+        prevDylibModTime = currDylibModTime = cDLLPath.modtime(),
+        "Couldn't load library `" << cDLLFileName << "` stat data on initialize." );
 
     /// Initialize Windows/Graphics ///
 
@@ -127,14 +133,13 @@ int main() {
 
     /// Generate Graphics Assets ///
 
-    const char8_t* fontFileName = "dejavu_mono.ttf";
-    llce::platform::path fontPath( sdlProjPath );
-    LLCE_ASSERT_ERROR(
-        fontPath.dn("dat") && fontPath.dn(fontFileName),
-        "Failed to locate font with file name '" << fontFileName << "'." );
+    const char8_t* cFontFileName = "dejavu_mono.ttf";
+    const path_t cFontPath( 3, cProjPath.cstr(), "dat", cFontFileName );
+    LLCE_ASSERT_ERROR( cFontPath.exists(),
+        "Failed to locate font with file name '" << cFontFileName << "'." );
 
     const int32_t cFontSize = 20;
-    TTF_Font* font = TTF_OpenFont( fontPath, cFontSize );
+    TTF_Font* font = TTF_OpenFont( cFontPath, cFontSize );
     LLCE_ASSERT_ERROR( font != nullptr,
         "SDL-TTF failed to create font; " << TTF_GetError() );
 
@@ -274,18 +279,18 @@ int main() {
         }
 
         LLCE_ASSERT_ERROR(
-            currDylibModTime = sdlLibPath.modtime(),
-            "Couldn't load library `" << sdlLibFileName << "` stat data on step." );
+            currDylibModTime = cDLLPath.modtime(),
+            "Couldn't load library `" << cDLLFileName << "` stat data on step." );
         if( currDylibModTime != prevDylibModTime ) {
-            sdlLibLockPath.wait();
+            cDLLLockPath.wait();
 
-            llce::platform::dllUnloadHandle( sdlLibHandle, sdlLibFileName );
-            sdlLibHandle = llce::platform::dllLoadHandle( sdlLibFileName );
+            llce::platform::dllUnloadHandle( sdlLibHandle, cDLLFileName );
+            sdlLibHandle = llce::platform::dllLoadHandle( cDLLFileName );
             updateFunction = (update_f)llce::platform::dllLoadSymbol( sdlLibHandle, "update" );
             renderFunction = (render_f)llce::platform::dllLoadSymbol( sdlLibHandle, "render" );
             LLCE_ASSERT_ERROR(
                 sdlLibHandle != nullptr && updateFunction != nullptr && renderFunction != nullptr,
-                "Couldn't load library `" << sdlLibFileName << "` symbols at " <<
+                "Couldn't load library `" << cDLLFileName << "` symbols at " <<
                 "simulation time " << simTimer.tt() << "." );
 
             prevDylibModTime = currDylibModTime;

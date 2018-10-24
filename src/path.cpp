@@ -1,3 +1,4 @@
+#include <cstdarg>
 #include <string.h>
 
 #include <errno.h>
@@ -31,17 +32,54 @@ path::path( const char8_t* pBuffer ) {
 }
 
 
-path::operator const char8_t*() {
+path::path( const uint32_t pArgCount, ... ) {
+    mLength = 0;
+    mBuffer[mLength] = '\0';
+
+    va_list args;
+    va_start( args, pArgCount );
+
+    bool32_t areArgsValid = true;
+    
+    for( uint32_t argIdx = 0; argIdx < pArgCount; argIdx++ ) {
+        const char8_t* arg = va_arg( args, const char8_t* );
+
+        if( argIdx == 0 ) {
+            uint32_t inLength = 0;
+            for( const char8_t* pItr = arg; *pItr != '\0'; pItr++, inLength++ ) {}
+
+            memcpy( &mBuffer[0], arg, inLength );
+            mLength = inLength;
+            mBuffer[mLength] = '\0';
+        } else {
+            areArgsValid &= ( arg == nullptr ) ? up() : dn( arg );
+        }
+    }
+
+    va_end( args );
+
+    LLCE_ASSERT_INFO( areArgsValid,
+        "Failed to initialize arbitrary variadic path; one or more indicated " <<
+        "arguments were invalid." );
+}
+
+
+path::operator const char8_t*() const {
     return &mBuffer[0];
 }
 
 
-bool32_t path::up() {
+const char8_t* path::cstr() const {
+    return &mBuffer[0];
+}
+
+
+bool32_t path::up( const uint32_t pLevels ) {
     bool32_t success = true;
 
     char8_t* pathItr = nullptr;
     for( pathItr = &mBuffer[0]; *pathItr != '\0'; pathItr++ ) {}
-    for( ; pathItr > &mBuffer[0] && *pathItr != path::SEP_CHAR; pathItr-- ) {}
+    for( ; pathItr > &mBuffer[0] && *pathItr != path::SEP_SEQ; pathItr-- ) {}
 
     bool32_t hasPathParent = pathItr > &mBuffer[0];
     success &= hasPathParent;
@@ -70,7 +108,7 @@ bool32_t path::dn( const char8_t* pChild ) {
         LLCE_ASSERT_INFO( false,
             "Cannot find child `" << pChild << "` of extended path `" << &mBuffer[0] << "`." );
     } else {
-        mBuffer[mLength] = path::SEP_CHAR;
+        mBuffer[mLength] = path::SEP_SEQ;
         memcpy( &mBuffer[mLength + 1], pChild, childLength );
         mLength += 1 + childLength;
     }
@@ -135,7 +173,7 @@ bool32_t path::wait() const {
     }
 
     LLCE_ASSERT_INFO( waitSuccessful,
-        "Failed to pwait for file at path " << &mBuffer[0] << "; " <<
+        "Failed to wait for file at path " << &mBuffer[0] << "; " <<
         strerror(errno) );
 
     return waitSuccessful;
@@ -204,7 +242,7 @@ path libFindDLLPath( const char8_t* pLibName ) {
         for( const char8_t* pItr = pathIter; *pItr != '\0'; pItr++ ) {
             libPath.mBuffer[libPath.mLength++] = *pItr;
         }
-        libPath.mBuffer[libPath.mLength++] = path::SEP_CHAR;
+        libPath.mBuffer[libPath.mLength++] = path::SEP_SEQ;
         for( const char8_t* pItr = pLibName; *pItr != '\0'; pItr++ ) {
             libPath.mBuffer[libPath.mLength++] = *pItr;
         }

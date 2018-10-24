@@ -15,6 +15,7 @@
 typedef void (*update_f)( ttylib::state*, ttylib::input* );
 typedef void (*render_f)( const ttylib::state*, const ttylib::input* );
 typedef std::ios_base::openmode ioflag_t;
+typedef llce::platform::path path_t;
 
 int32_t main() {
     /// Initialize Application Memory/State ///
@@ -35,7 +36,6 @@ int32_t main() {
     }
 
     std::fstream recStateStream, recInputStream;
-    const char8_t* cStateFilePath = "out/tty_state.dat", * cInputFilePath = "out/tty_input.dat";
     const ioflag_t cIOModeR = std::fstream::binary | std::fstream::in;
     const ioflag_t cIOModeW = std::fstream::binary | std::fstream::out | std::fstream::trunc;
 
@@ -47,28 +47,41 @@ int32_t main() {
     llce::keyboard tty;
     LLCE_ASSERT_ERROR( tty.reading(), "Couldn't initialize keyboard input for process." );
 
+    /// Find Project Paths ///
+
+    const path_t cExePath = llce::platform::exeBasePath();
+    LLCE_ASSERT_ERROR( cExePath.exists(),
+        "Failed to find path to running executable." );
+
+    const path_t cProjPath( 3, cExePath.cstr(), nullptr, nullptr );
+    LLCE_ASSERT_ERROR( cProjPath.exists(),
+        "Failed to find path to running executable." );
+
+    const path_t cStateFilePath( 3, cProjPath.cstr(), "out", "sdl_state.dat" );
+    const path_t cInputFilePath( 3, cProjPath.cstr(), "out", "sdl_input.dat" );
+
     /// Load Dynamic Shared Library ///
 
-    const char8_t* ttyLibFileName = "ttylib.so";
-    llce::platform::path ttyLibPath = llce::platform::libFindDLLPath( ttyLibFileName );
-    LLCE_ASSERT_ERROR( ttyLibPath.exists(),
-        "Failed to find library " << ttyLibFileName << " in dynamic path." );
-    llce::platform::path ttyLibLockPath = llce::platform::pathLockPath( ttyLibPath );
+    const char8_t* cDLLFileName = "ttylib.so";
+    const path_t cDLLPath = llce::platform::libFindDLLPath( cDLLFileName );
+    LLCE_ASSERT_ERROR( cDLLPath.exists(),
+        "Failed to find library " << cDLLFileName << " in dynamic path." );
+    const path_t cDLLLockPath = llce::platform::pathLockPath( cDLLPath );
 
-    void* ttyLibHandle = llce::platform::dllLoadHandle( ttyLibPath );
+    void* ttyLibHandle = llce::platform::dllLoadHandle( cDLLPath );
     void* updateSymbol = llce::platform::dllLoadSymbol( ttyLibHandle, "update" );
     void* renderSymbol = llce::platform::dllLoadSymbol( ttyLibHandle, "render" );
     LLCE_ASSERT_ERROR(
         ttyLibHandle != nullptr && updateSymbol != nullptr && renderSymbol != nullptr,
-        "Couldn't load library `" << ttyLibFileName << "` symbols on initialize." );
+        "Couldn't load library `" << cDLLFileName << "` symbols on initialize." );
 
     update_f updateFunction = (update_f)updateSymbol;
     render_f renderFunction = (render_f)renderSymbol;
 
     int64_t prevDylibModTime, currDylibModTime;
     LLCE_ASSERT_ERROR(
-        prevDylibModTime = currDylibModTime = ttyLibPath.modtime(),
-        "Couldn't load library `" << ttyLibFileName << "` stat data on initialize." );
+        prevDylibModTime = currDylibModTime = cDLLPath.modtime(),
+        "Couldn't load library `" << cDLLFileName << "` stat data on initialize." );
 
     /// Update Application ///
 
@@ -127,18 +140,18 @@ int32_t main() {
         }
 
         LLCE_ASSERT_ERROR(
-            currDylibModTime = ttyLibPath.modtime(),
-            "Couldn't load library `" << ttyLibFileName << "` stat data on step." );
+            currDylibModTime = cDLLPath.modtime(),
+            "Couldn't load library `" << cDLLFileName << "` stat data on step." );
         if( currDylibModTime != prevDylibModTime ) {
-            ttyLibLockPath.wait();
+            cDLLLockPath.wait();
 
-            llce::platform::dllUnloadHandle( ttyLibHandle, ttyLibFileName );
-            ttyLibHandle = llce::platform::dllLoadHandle( ttyLibFileName );
+            llce::platform::dllUnloadHandle( ttyLibHandle, cDLLFileName );
+            ttyLibHandle = llce::platform::dllLoadHandle( cDLLFileName );
             updateFunction = (update_f)llce::platform::dllLoadSymbol( ttyLibHandle, "update" );
             renderFunction = (render_f)llce::platform::dllLoadSymbol( ttyLibHandle, "render" );
             LLCE_ASSERT_ERROR(
                 ttyLibHandle != nullptr && updateFunction != nullptr && renderFunction != nullptr,
-                "Couldn't load library `" << ttyLibFileName << "` symbols at " <<
+                "Couldn't load library `" << cDLLFileName << "` symbols at " <<
                 "simulation time " << simTimer.tt() << "." );
 
             prevDylibModTime = currDylibModTime;
