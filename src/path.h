@@ -21,7 +21,7 @@ class path {
 
     path();
     path( const char8_t* pBuffer );
-    path( const uint32_t pComps, ... );
+    path( const uint32_t pArgCount, ... );
 
     /// Conversions ///
 

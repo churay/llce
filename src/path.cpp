@@ -79,16 +79,21 @@ bool32_t path::up( const uint32_t pLevels ) {
 
     char8_t* pathItr = nullptr;
     for( pathItr = &mBuffer[0]; *pathItr != '\0'; pathItr++ ) {}
-    for( ; pathItr > &mBuffer[0] && *pathItr != path::SEP_SEQ; pathItr-- ) {}
 
-    bool32_t hasPathParent = pathItr > &mBuffer[0];
-    success &= hasPathParent;
-    if( !hasPathParent ) {
-        LLCE_ASSERT_INFO( false,
-            "Cannot find parent to invalid path `" << &mBuffer[0] << "`." );
-    } else {
-        *pathItr = '\0';
-        mLength = pathItr - &mBuffer[0];
+    for( uint32_t levelIdx = 0; levelIdx < pLevels; levelIdx++ ) {
+        for( ; pathItr > &mBuffer[0] && *pathItr != path::SEP_SEQ; pathItr-- ) {}
+
+        bool32_t hasPathParent = pathItr > &mBuffer[0];
+        success &= hasPathParent;
+        if( !hasPathParent ) {
+            LLCE_ASSERT_INFO( false,
+                "Cannot find ancestor at level " << (levelIdx + 1) <<
+                " for path `" << &mBuffer[0] << "`." );
+            break;
+        } else {
+            *pathItr = '\0';
+            mLength = pathItr - &mBuffer[0];
+        }
     }
 
     return success;
