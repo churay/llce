@@ -71,7 +71,7 @@ int main() {
     const path_t cDLLPath = llce::platform::libFindDLLPath( cDLLFileName );
     LLCE_ASSERT_ERROR( cDLLPath.exists(),
         "Failed to find library " << cDLLFileName << " in dynamic path." );
-    const path_t cDLLLockPath = llce::platform::pathLockPath( cDLLFileName );
+    const path_t cDLLLockPath = llce::platform::pathLockPath( cDLLPath );
 
     void* sdlLibHandle = llce::platform::dllLoadHandle( cDLLPath );
     void* updateSymbol = llce::platform::dllLoadSymbol( sdlLibHandle, "update" );
