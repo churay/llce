@@ -231,18 +231,7 @@ int main() {
                     isRunning = false;
                 }
 #ifdef LLCE_DEBUG
-                else if( pressedKey == SDLK_r ) {
-                    if( !isRecording ) {
-                        recFrameCount = 0;
-                        recStateStream.open( cStateFilePath, cIOModeW );
-                        recStateStream.write( mem.buffer(), mem.length() );
-                        recStateStream.close();
-                        recInputStream.open( cInputFilePath, cIOModeW );
-                    } else {
-                        recInputStream.close();
-                    }
-                    isRecording = !isRecording;
-                } else if( pressedKey == SDLK_t ) {
+                else if( pressedKey == SDLK_t && !isRecording ) {
                     if( !isReplaying ) {
                         repFrameIdx = 0;
                         recStateStream.open( cStateFilePath, cIOModeR );
@@ -254,6 +243,17 @@ int main() {
                         recInputStream.close();
                     }
                     isReplaying = !isReplaying;
+                } else if( pressedKey == SDLK_r && !isReplaying ) {
+                    if( !isRecording ) {
+                        recFrameCount = 0;
+                        recStateStream.open( cStateFilePath, cIOModeW );
+                        recStateStream.write( mem.buffer(), mem.length() );
+                        recStateStream.close();
+                        recInputStream.open( cInputFilePath, cIOModeW );
+                    } else {
+                        recInputStream.close();
+                    }
+                    isRecording = !isRecording;
                 }
 #endif
             }

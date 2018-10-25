@@ -99,7 +99,17 @@ int32_t main() {
             isRunning = false;
         }
 #ifdef LLCE_DEBUG
-        if( input->keys[llce::keyboard::keycode::r] ) {
+        if( input->keys[llce::keyboard::keycode::t] && !isRecording ) {
+            if( !isReplaying ) {
+                recStateStream.open( cStateFilePath, cIOModeR );
+                recInputStream.open( cInputFilePath, cIOModeR );
+                recInputStream.seekg( 0, std::ios_base::end );
+            } else {
+                recStateStream.close();
+                recInputStream.close();
+            }
+            isReplaying = !isReplaying;
+        } if( input->keys[llce::keyboard::keycode::r] && !isReplaying ) {
             if( !isRecording ) {
                 recStateStream.open( cStateFilePath, cIOModeW );
                 recStateStream.write( mem.buffer(), mem.length() );
@@ -110,16 +120,6 @@ int32_t main() {
                 recInputStream.close();
             }
             isRecording = !isRecording;
-        } if( input->keys[llce::keyboard::keycode::t] ) {
-            if( !isReplaying ) {
-                recStateStream.open( cStateFilePath, cIOModeR );
-                recInputStream.open( cInputFilePath, cIOModeR );
-                recInputStream.seekg( 0, std::ios_base::end );
-            } else {
-                recStateStream.close();
-                recInputStream.close();
-            }
-            isReplaying = !isReplaying;
         }
 #endif
 
