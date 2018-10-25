@@ -18,23 +18,23 @@ namespace platform {
 
 path::path() {
     mLength = 0;
-    mBuffer[mLength] = '\0';
+    mBuffer[mLength] = path::EOS;
 }
 
 
 path::path( const char8_t* pBuffer ) {
     uint32_t inLength = 0;
-    for( const char8_t* pItr = pBuffer; *pItr != '\0'; pItr++, inLength++ ) {}
+    for( const char8_t* pItr = pBuffer; *pItr != path::EOS; pItr++, inLength++ ) {}
 
     memcpy( &mBuffer[0], pBuffer, inLength );
     mLength = inLength;
-    mBuffer[mLength] = '\0';
+    mBuffer[mLength] = path::EOS;
 }
 
 
 path::path( const uint32_t pArgCount, ... ) {
     mLength = 0;
-    mBuffer[mLength] = '\0';
+    mBuffer[mLength] = path::EOS;
 
     va_list args;
     va_start( args, pArgCount );
@@ -46,13 +46,13 @@ path::path( const uint32_t pArgCount, ... ) {
 
         if( argIdx == 0 ) {
             uint32_t inLength = 0;
-            for( const char8_t* pItr = arg; *pItr != '\0'; pItr++, inLength++ ) {}
+            for( const char8_t* pItr = arg; *pItr != path::EOS; pItr++, inLength++ ) {}
 
             memcpy( &mBuffer[0], arg, inLength );
             mLength = inLength;
-            mBuffer[mLength] = '\0';
+            mBuffer[mLength] = path::EOS;
         } else {
-            areArgsValid &= ( arg == nullptr ) ? up() : dn( arg );
+            areArgsValid &= ( arg == path::DUP ) ? up() : dn( arg );
         }
     }
 
@@ -78,10 +78,10 @@ bool32_t path::up( const uint32_t pLevels ) {
     bool32_t success = true;
 
     char8_t* pathItr = nullptr;
-    for( pathItr = &mBuffer[0]; *pathItr != '\0'; pathItr++ ) {}
+    for( pathItr = &mBuffer[0]; *pathItr != path::EOS; pathItr++ ) {}
 
     for( uint32_t levelIdx = 0; levelIdx < pLevels; levelIdx++ ) {
-        for( ; pathItr > &mBuffer[0] && *pathItr != path::SEP_SEQ; pathItr-- ) {}
+        for( ; pathItr > &mBuffer[0] && *pathItr != path::DSEP; pathItr-- ) {}
 
         bool32_t hasPathParent = pathItr > &mBuffer[0];
         success &= hasPathParent;
@@ -91,7 +91,7 @@ bool32_t path::up( const uint32_t pLevels ) {
                 " for path `" << &mBuffer[0] << "`." );
             break;
         } else {
-            *pathItr = '\0';
+            *pathItr = path::EOS;
             mLength = pathItr - &mBuffer[0];
         }
     }
@@ -104,7 +104,7 @@ bool32_t path::dn( const char8_t* pChild ) {
     bool32_t success = true;
 
     uint32_t childLength = 0;
-    for( const char8_t* pItr = pChild; *pItr != '\0'; pItr++, childLength++ ) {}
+    for( const char8_t* pItr = pChild; *pItr != path::EOS; pItr++, childLength++ ) {}
 
     bool32_t isPathOverflowed = mLength + childLength + 1 > path::MAX_LENGTH;
     success &= !isPathOverflowed;
@@ -113,7 +113,7 @@ bool32_t path::dn( const char8_t* pChild ) {
         LLCE_ASSERT_INFO( false,
             "Cannot find child `" << pChild << "` of extended path `" << &mBuffer[0] << "`." );
     } else {
-        mBuffer[mLength] = path::SEP_SEQ;
+        mBuffer[mLength] = path::DSEP;
         memcpy( &mBuffer[mLength + 1], pChild, childLength );
         mLength += 1 + childLength;
     }
@@ -190,10 +190,10 @@ path pathLockPath( const path& pBasePath ) {
     const char8_t* lockSuffix = ".lock";
 
     path lockPath = pBasePath;
-    for( const char8_t* pItr = lockSuffix; *pItr != '\0'; pItr++ ) {
+    for( const char8_t* pItr = lockSuffix; *pItr != path::EOS; pItr++ ) {
         lockPath.mBuffer[lockPath.mLength++] = *pItr;
     }
-    lockPath.mBuffer[lockPath.mLength] = '\0';
+    lockPath.mBuffer[lockPath.mLength] = path::EOS;
 
     return lockPath;
 }
@@ -205,7 +205,7 @@ path exeBasePath() {
         path::MAX_LENGTH );
 
     if( status <= 0 ) {
-        exePath.mBuffer[0] = '\0';
+        exePath.mBuffer[0] = path::EOS;
         exePath.mLength = 0;
         LLCE_ASSERT_INFO( false,
             "Failed to retrieve the path to the running executable; " <<
@@ -240,19 +240,19 @@ path libFindDLLPath( const char8_t* pLibName ) {
     const char8_t* procRPath = ( procStringTable != nullptr && procRPathOffset >= 0 ) ?
         procStringTable + procRPathOffset : nullptr;
     for( const char8_t* pathIter = procRPath;
-            pathIter != nullptr && *pathIter != '\0' && !libPath.exists();
+            pathIter != nullptr && *pathIter != path::EOS && !libPath.exists();
             pathIter = strchr(pathIter, ':') ) {
         libPath.mLength = 0;
 
-        for( const char8_t* pItr = pathIter; *pItr != '\0'; pItr++ ) {
+        for( const char8_t* pItr = pathIter; *pItr != path::EOS; pItr++ ) {
             libPath.mBuffer[libPath.mLength++] = *pItr;
         }
-        libPath.mBuffer[libPath.mLength++] = path::SEP_SEQ;
-        for( const char8_t* pItr = pLibName; *pItr != '\0'; pItr++ ) {
+        libPath.mBuffer[libPath.mLength++] = path::DSEP;
+        for( const char8_t* pItr = pLibName; *pItr != path::EOS; pItr++ ) {
             libPath.mBuffer[libPath.mLength++] = *pItr;
         }
 
-        libPath.mBuffer[libPath.mLength] = '\0';
+        libPath.mBuffer[libPath.mLength] = path::EOS;
     }
 
     LLCE_ASSERT_INFO( libPath.exists(),

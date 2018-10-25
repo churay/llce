@@ -58,7 +58,7 @@ int main() {
     LLCE_ASSERT_ERROR( cExePath.exists(),
         "Failed to find path to running executable." );
 
-    const path_t cProjPath( 3, cExePath.cstr(), nullptr, nullptr );
+    const path_t cProjPath( 3, cExePath.cstr(), path_t::DUP, path_t::DUP );
     LLCE_ASSERT_ERROR( cProjPath.exists(),
         "Failed to find path to running executable." );
 

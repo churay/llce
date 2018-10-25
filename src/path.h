@@ -15,7 +15,10 @@ class path {
     // NOTE(JRC): This is the maximum byte length according to the author of eCryptfs.
     // (see: https://unix.stackexchange.com/a/32834)
     const static uint32_t MAX_LENGTH = 4096;
-    const static char8_t SEP_SEQ = '/';
+
+    const static char8_t EOS = '\0';
+    const static char8_t DSEP = '/';
+    constexpr static char8_t* DUP = nullptr;
 
     /// Constructors ///
 
