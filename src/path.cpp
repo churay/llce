@@ -224,38 +224,49 @@ path libFindDLLPath( const char8_t* pLibName ) {
     // NOTE(JRC): The contents of this function heavily reference the system
     // implementation of the '<link.h>' dependency, which defines the C data
     // structures that interface with dynamic library symbol tables.
-    // TODO(JRC): Extend this solution so that it loads using 'DT_RUNPATH' and
-    // '$ORIGIN' like the built-in Unix run-time loading mechanism does.
+
+    // TODO(JRC): Update this function so that it supports loading DLLs from
+    // all supported locations and not just the binary's "RPATH" and "RUNPATH"
+    // table values. More information on DLL loading can be found here:
+    // https://amir.rachum.com/blog/2016/09/17/shared-libraries/#elf---executable-and-linkable-format
+
     const char8_t* procStringTable = nullptr;
-    int32_t procRPathOffset = -1;
+    int32_t procRPathOffset = -1, procRunPathOffset = -1;
 
     for( const ElfW(Dyn)* dylibIter = _DYNAMIC; dylibIter->d_tag != DT_NULL; ++dylibIter ) {
         if( dylibIter->d_tag == DT_STRTAB ) {
             procStringTable = (const char8_t*)( dylibIter->d_un.d_val );
         } else if( dylibIter->d_tag == DT_RPATH ) {
             procRPathOffset = (int32_t)( dylibIter->d_un.d_val );
+        } else if( dylibIter->d_tag == DT_RUNPATH ) {
+            procRunPathOffset = (int32_t)( dylibIter->d_un.d_val );
         }
     }
 
-    const char8_t* procRPath = ( procStringTable != nullptr && procRPathOffset >= 0 ) ?
-        procStringTable + procRPathOffset : nullptr;
-    for( const char8_t* pathIter = procRPath;
-            pathIter != nullptr && *pathIter != path::EOS && !libPath.exists();
-            pathIter = strchr(pathIter, ':') ) {
-        libPath.mLength = 0;
+    const int32_t procDynPathOffsets[2] = { procRPathOffset, procRunPathOffset };
+    for( uint8_t dynPathIdx = 0; dynPathIdx < 2 && !libPath.exists(); dynPathIdx++ ) {
+        const int32_t procDynPathOffset = procDynPathOffsets[dynPathIdx];
 
-        for( const char8_t* pItr = pathIter; *pItr != path::EOS; pItr++ ) {
-            libPath.mBuffer[libPath.mLength++] = *pItr;
-        }
-        libPath.mBuffer[libPath.mLength++] = path::DSEP;
-        for( const char8_t* pItr = pLibName; *pItr != path::EOS; pItr++ ) {
-            libPath.mBuffer[libPath.mLength++] = *pItr;
-        }
+        const char8_t* procDynPath = ( procStringTable != nullptr && procDynPathOffset >= 0 ) ?
+            procStringTable + procDynPathOffset : nullptr;
+        for( const char8_t* pathIter = procDynPath;
+                pathIter != nullptr && *pathIter != path::EOS && !libPath.exists();
+                pathIter = strchr(pathIter, ':') ) {
+            libPath.mLength = 0;
 
-        libPath.mBuffer[libPath.mLength] = path::EOS;
+            for( const char8_t* pItr = pathIter; *pItr != path::EOS; pItr++ ) {
+                libPath.mBuffer[libPath.mLength++] = *pItr;
+            }
+            libPath.mBuffer[libPath.mLength++] = path::DSEP;
+            for( const char8_t* pItr = pLibName; *pItr != path::EOS; pItr++ ) {
+                libPath.mBuffer[libPath.mLength++] = *pItr;
+            }
+
+            libPath.mBuffer[libPath.mLength] = path::EOS;
+        }
     }
 
-    LLCE_ASSERT_INFO( libPath.exists(),
+    LLCE_ASSERT_ERROR( libPath.exists(),
         "Failed to find `" << pLibName << "` in the executable's dynamic path; " <<
         strerror(errno) );
 
